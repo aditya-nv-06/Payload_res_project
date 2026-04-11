@@ -22,6 +22,7 @@
 #define MAX_FLOWS        8192   /* hard cap on concurrent tracked connections  */
 #define FLOW_TIMEOUT_SEC  120   /* idle flow eviction after this many seconds  */
 #define SEG_MAXBUF      65536   /* max bytes buffered per flow                 */
+#define PG_DEFAULT_PORT  5432   /* PostgreSQL default TCP port                 */
 
 /* -------------------------------------------------------------------------- */
 

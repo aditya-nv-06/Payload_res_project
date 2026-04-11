@@ -94,7 +94,9 @@ static void flow_insert_seg(flow_t *f,
 {
     if (len == 0) return;
 
-    /* Drop if segment is entirely before next_seq (already seen) */
+    /* Drop if segment is entirely before next_seq (already seen).
+     * Signed arithmetic is intentional: it handles TCP sequence number
+     * wrap-around correctly (e.g. 0xFFFF0000 → 0x00010000). */
     if (f->seq_init) {
         uint32_t end = seq + len;
         if ((int32_t)(end - f->next_seq) <= 0) return;  /* fully old */
@@ -192,7 +194,7 @@ void reassembly_feed(reassembly_ctx_t *ctx,
                      time_t now)
 {
     /* Only track the client→server direction (client port != 5432) */
-    if (dp != 5432) return;
+    if (dp != PG_DEFAULT_PORT) return;
 
     flow_t *f = flow_find(ctx, sa, da, sp, dp);
 

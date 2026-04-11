@@ -19,6 +19,7 @@
 
 #define PG_MAX_QUERY     16384  /* max SQL string we will handle */
 #define PG_PARSE_BUF_SZ  32768  /* per-flow reassembly buffer    */
+#define PG_STARTUP_MAX_LEN 4096 /* max valid StartupMessage size */
 
 /* Per-flow PostgreSQL parser state */
 typedef struct pg_flow_state {

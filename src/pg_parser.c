@@ -75,7 +75,7 @@ static size_t consume_startup(const uint8_t *buf, size_t len)
     uint32_t msg_len = ntohl(*(const uint32_t *)buf);
 
     /* Sanity: typical startup message is < 1 KB */
-    if (msg_len < 8 || msg_len > 4096) {
+    if (msg_len < 8 || msg_len > PG_STARTUP_MAX_LEN) {
         /* Not a valid StartupMessage – skip 4 bytes and hope for the best */
         return 4;
     }
