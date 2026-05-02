@@ -98,15 +98,10 @@ static void flow_insert_seg(flow_t *f,
      * Signed arithmetic is intentional: it handles TCP sequence number
      * wrap-around correctly (e.g. 0xFFFF0000 → 0x00010000). */
     if (f->seq_init) {
-        /* Check if segment end is before or at next_seq using signed comparison
-         * to properly handle TCP sequence number wrap-around */
-        int32_t diff = (int32_t)(seq - f->next_seq);
-        int32_t seg_end_offset = (int32_t)len;
-        
-        if (diff + seg_end_offset <= 0) return;  /* fully old data */
-        
+        uint32_t end = seq + len;
+        if ((int32_t)(end - f->next_seq) <= 0) return;  /* fully old */
         /* Trim leading bytes already delivered */
-        if (diff < 0) {
+        if ((int32_t)(seq - f->next_seq) < 0) {
             uint32_t trim = f->next_seq - seq;
             seq  += trim;
             data += trim;
