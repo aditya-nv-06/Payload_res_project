@@ -217,27 +217,67 @@ static void on_packet(const struct pcap_pkthdr *hdr,
 }
 
 /* ========================================================================= */
-/* Usage                                                                     */
+/* Version and Usage                                                          */
 /* ========================================================================= */
+
+#define PGSQL_IDS_VERSION "1.0.0"
+
+static void print_version(void)
+{
+    printf("pgsql_ids v%s\n"
+           "PostgreSQL Payload Fragmentation & SQLi Detection Sensor\n",
+           PGSQL_IDS_VERSION);
+}
 
 static void usage(const char *prog)
 {
     fprintf(stderr,
+        "\n"
+        "  ╔════════════════════════════════════════════════════════════╗\n"
+        "  ║     PostgreSQL IDS - SQLi Detection Sensor v%s              ║\n"
+        "  ╚════════════════════════════════════════════════════════════╝\n"
+        "\n"
         "Usage: %s [options]\n"
         "\n"
+        "CAPTURE OPTIONS:\n"
         "  -i <iface>     Live capture interface (default: any)\n"
         "  -r <file>      Read from offline PCAP file\n"
         "  -f <bpf>       Extra BPF filter (AND-ed with tcp port 5432)\n"
+        "\n"
+        "ANALYSIS OPTIONS:\n"
         "  -R <rules>     Rules config file (default: config/rules.conf)\n"
-        "  -o <out>       Alert log file   (default: alerts.jsonl)\n"
-        "  -p <pcap>      Dump flagged packets to PCAP file\n"
         "  -m <model>     N-gram model file (enables anomaly scoring)\n"
-        "  -t <corpus>    Train n-gram model from corpus and save to -m path\n"
         "  -T <thresh>    Anomaly threshold (default: -5.0)\n"
+        "\n"
+        "OUTPUT OPTIONS:\n"
+        "  -o <file>      Alert log file (default: alerts.jsonl)\n"
+        "  -p <file>      Dump flagged packets to PCAP file\n"
+        "\n"
+        "TRAINING:\n"
+        "  -t <corpus>    Train n-gram model from corpus (requires -m)\n"
+        "\n"
+        "DATABASE OPTIONS:\n"
         "  -c <connstr>   libpq connection string for pg_stat_activity\n"
+        "\n"
+        "OTHER:\n"
         "  -v             Verbose output to stderr\n"
-        "  -h             Show this help\n",
-        prog);
+        "  --version      Show version information\n"
+        "  -h, --help     Show this help message\n"
+        "\n"
+        "EXAMPLES:\n"
+        "  # Live capture on eth0 with verbose output\n"
+        "  %s -i eth0 -R config/rules.conf -v\n"
+        "\n"
+        "  # Analyze offline PCAP file\n"
+        "  %s -r capture.pcap -R config/rules.conf -o alerts.jsonl\n"
+        "\n"
+        "  # Train anomaly model from SQL corpus\n"
+        "  %s -t corpus.sql -m model.ngram -v\n"
+        "\n"
+        "  # Advanced: anomaly + rule detection + packet dump\n"
+        "  %s -r pcap.file -m model.ngram -p flagged.pcap -o alerts.jsonl\n"
+        "\n",
+        PGSQL_IDS_VERSION, prog, prog, prog, prog, prog);
 }
 
 /* ========================================================================= */
@@ -259,6 +299,18 @@ int main(int argc, char *argv[])
     double      anomaly_thr = -5.0;
     int         verbose     = 0;
 
+    /* ---- Handle long options ---- */
+    if (argc > 1) {
+        if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
+            usage(argv[0]);
+            return 0;
+        }
+        if (strcmp(argv[1], "--version") == 0) {
+            print_version();
+            return 0;
+        }
+    }
+
     int opt;
     while ((opt = getopt(argc, argv, "i:r:f:R:o:p:m:t:T:c:vh")) != -1) {
         switch (opt) {
@@ -270,26 +322,55 @@ int main(int argc, char *argv[])
         case 'p': pcap_dump   = optarg; break;
         case 'm': model_path  = optarg; break;
         case 't': corpus_path = optarg; break;
-        case 'T': anomaly_thr = atof(optarg); break;
+        case 'T': 
+            anomaly_thr = atof(optarg);
+            if (anomaly_thr == 0.0) {
+                fprintf(stderr, "[ERROR] Invalid threshold value: %s\n", optarg);
+                return 1;
+            }
+            break;
         case 'c': pg_connstr  = optarg; break;
         case 'v': verbose     = 1; break;
         case 'h': usage(argv[0]); return 0;
-        default:  usage(argv[0]); return 1;
+        case '?':
+        default:
+            fprintf(stderr, "\n[ERROR] Invalid option: -%c\n", optopt);
+            fprintf(stderr, "Use '%s -h' for help.\n\n", argv[0]);
+            return 1;
         }
+    }
+
+    /* ---- Validate arguments ---- */
+    if (pcap_file && !pcap_file[0]) {
+        fprintf(stderr, "[ERROR] PCAP file path cannot be empty\n");
+        return 1;
+    }
+
+    if (rules_path && !rules_path[0]) {
+        fprintf(stderr, "[ERROR] Rules path cannot be empty\n");
+        return 1;
+    }
+
+    if (corpus_path && !model_path) {
+        fprintf(stderr, "[ERROR] -t (training) requires -m (model path)\n");
+        return 1;
     }
 
     /* ---- N-gram training mode ---- */
     if (corpus_path) {
-        if (!model_path) {
-            fprintf(stderr, "[main] -t requires -m <model_path>\n");
-            return 1;
-        }
+        fprintf(stderr, "[INFO] Training n-gram model from corpus: %s\n", corpus_path);
         ngram_model_t m;
         ngram_init(&m, NGRAM_N, NGRAM_SMOOTHING);
         int n = ngram_train_file(&m, corpus_path);
-        if (n < 0) return 1;
-        if (ngram_save(&m, model_path) < 0) return 1;
-        fprintf(stderr, "[main] model saved to %s (%d queries)\n",
+        if (n < 0) {
+            fprintf(stderr, "[ERROR] Failed to train model\n");
+            return 1;
+        }
+        if (ngram_save(&m, model_path) < 0) {
+            fprintf(stderr, "[ERROR] Failed to save model to %s\n", model_path);
+            return 1;
+        }
+        fprintf(stderr, "[SUCCESS] Model saved to %s (%d queries)\n",
                 model_path, n);
         ngram_free(&m);
         return 0;
@@ -299,6 +380,20 @@ int main(int argc, char *argv[])
     memset(&g_app, 0, sizeof(g_app));
     g_app.anomaly_threshold = anomaly_thr;
     g_app.verbose           = verbose;
+
+    if (verbose) {
+        fprintf(stderr,
+            "\n"
+            "[CONFIG] Capture Mode: %s\n"
+            "[CONFIG] Rules File: %s\n"
+            "[CONFIG] Alert Output: %s\n"
+            "[CONFIG] Anomaly Threshold: %.2f\n"
+            "\n",
+            pcap_file ? pcap_file : iface,
+            rules_path,
+            alert_path,
+            anomaly_thr);
+    }
 
     /* ---- Load detection rules ---- */
     if (detector_load(&g_app.detector, rules_path) < 0) {
