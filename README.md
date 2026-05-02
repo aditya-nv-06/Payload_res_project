@@ -67,24 +67,54 @@ make WITH_LIBPQ=1
 make test
 ```
 
-## Usage
+## CLI
 
-```
-./pgsql_ids [options]
+The sensor exposes a small Unix-style CLI. The fastest way to see the current
+options is:
 
-  -i <iface>     Live capture interface (default: any)
-  -r <file>      Read from offline PCAP file
-  -f <bpf>       Extra BPF filter expression (AND-ed with tcp port 5432)
-  -R <rules>     Rules config file (default: config/rules.conf)
-  -o <out>       Alert log file    (default: alerts.jsonl)
-  -p <pcap>      Dump flagged-flow packets to PCAP file
-  -m <model>     N-gram model file (enables anomaly scoring)
-  -t <corpus>    Train n-gram model from corpus file (one SQL per line)
-  -T <threshold> Anomaly score threshold (default: -5.0; lower = stricter)
-  -c <connstr>   libpq connection string for pg_stat_activity
-  -v             Verbose: print alerts to stderr
-  -h             Show help
+```bash
+./pgsql_ids -h
+./pgsql_ids --version
 ```
+
+### Common commands
+
+```bash
+# Offline scan of a PCAP file
+./pgsql_ids -r results/sqli_classic.pcap -R config/rules.conf -o alerts.jsonl -v
+
+# Train an n-gram model from a corpus
+./pgsql_ids -t corpus.sql -m baseline.model
+
+# Live capture on an interface (usually requires sudo or CAP_NET_RAW)
+sudo ./pgsql_ids -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl -v
+```
+
+### Flags
+
+| Flag | Meaning |
+|------|---------|
+| `-i <iface>` | Live capture interface (default: `any`) |
+| `-r <file>` | Read from an offline PCAP file |
+| `-f <bpf>` | Extra BPF filter expression AND-ed with `tcp port 5432` |
+| `-R <rules>` | Rules config file (default: `config/rules.conf`) |
+| `-o <file>` | Alert log output file (default: `alerts.jsonl`) |
+| `-p <pcap>` | Dump flagged packets to a PCAP file |
+| `-m <model>` | N-gram model file used for anomaly scoring |
+| `-t <corpus>` | Train an n-gram model from a SQL corpus and save it to `-m` |
+| `-T <threshold>` | Anomaly threshold (default: `-5.0`) |
+| `-c <connstr>` | libpq connection string for `pg_stat_activity` correlation |
+| `-v` | Verbose mode |
+| `-h`, `--help` | Show CLI help |
+| `--version` | Print the current CLI version |
+
+### Notes
+
+- `-t` requires `-m`; training mode exits after the model is written.
+- Live capture usually needs root privileges or `CAP_NET_RAW`.
+- Example traffic generators live in [tests/gen_test_traffic.py](tests/gen_test_traffic.py).
+
+For a longer walkthrough with expected output and alert examples, see [docs/cli.md](docs/cli.md).
 
 ## Demo Walkthrough
 
