@@ -59,7 +59,10 @@ char *util_json_escape(const char *src, char *dst, size_t dst_size)
 
 void util_strlcpy(char *dst, const char *src, size_t size)
 {
-    if (size == 0) return;
+    if (size == 0) {
+        if (dst) dst[0] = '\0';
+        return;
+    }
     size_t i;
     for (i = 0; i + 1 < size && src[i]; i++)
         dst[i] = src[i];
