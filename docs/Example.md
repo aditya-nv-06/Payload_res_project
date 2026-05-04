@@ -3,6 +3,8 @@
 This guide shows the most common ways to use `pqCheck` in plain language.
 Each example includes the goal, the command, and what to expect.
 
+If you want to understand the corpus model behind the anomaly score, see [docs/ngram.md](ngram.md).
+
 ## 1. Check a saved capture for SQL injection
 
 Use this when you already have a `.pcap` file and want to scan it for suspicious PostgreSQL traffic.

@@ -11,6 +11,7 @@ A passive network intrusion-detection sensor for PostgreSQL (TCP/5432) written i
 
 See [docs/architecture.md](docs/architecture.md) for the full Mermaid diagram and module map.
 For platform-specific run instructions, see [docs/run.md](docs/run.md).
+For the n-gram corpus model guide, see [docs/ngram.md](docs/ngram.md).
 
 ## Components
 
