@@ -1,4 +1,4 @@
-# pgsql_ids — PostgreSQL Payload Fragmentation & SQLi Detection Sensor
+# pqCheck — PostgreSQL Payload Fragmentation & SQLi Detection Sensor
 
 A passive network intrusion-detection sensor for PostgreSQL (TCP/5432) written in C for Linux. It reassembles fragmented TCP streams, parses the PostgreSQL wire protocol, and detects SQL injection using both rule-based matching and n-gram anomaly scoring. Optionally, it correlates network-level detections with live PostgreSQL telemetry via `pg_stat_activity`.
 
