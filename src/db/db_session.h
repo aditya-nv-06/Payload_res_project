@@ -1,7 +1,7 @@
 #ifndef DB_SESSION_H
 #define DB_SESSION_H
 
-#include "query_eval.h"
+#include "analysis/query_eval.h"
 
 int db_session_run(const char *connstr,
                    const char *sql,

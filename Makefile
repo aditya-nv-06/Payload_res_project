@@ -15,27 +15,27 @@ LDFLAGS := -lpcap -lm
 TARGET  := pgsql_ids
 TEST_TARGET := test_detector
 
-SRCS := src/util.c      \
-  src/cli.c      \
-        src/capture.c   \
-        src/reassembly.c\
-        src/pg_parser.c \
-        src/detector.c  \
-        src/ngram.c     \
-    src/packet_parse.c \
-  src/query_eval.c \
-  src/db_session.c \
-        src/pg_correlate.c \
-        src/alert.c     \
+SRCS := src/common/util.c \
+        src/app/cli.c     \
+        src/net/capture.c \
+        src/net/reassembly.c \
+        src/net/pg_parser.c \
+        src/net/packet_parse.c \
+        src/analysis/detector.c \
+        src/analysis/ngram.c \
+        src/analysis/query_eval.c \
+        src/db/db_session.c \
+        src/db/pg_correlate.c \
+        src/output/alert.c \
         src/main.c
 
 TEST_SRCS := tests/test_detector.c \
-             src/util.c            \
-             src/detector.c        \
-             src/ngram.c           \
-             src/alert.c           \
-             src/pg_correlate.c    \
-             src/reassembly.c
+             src/common/util.c     \
+             src/analysis/detector.c \
+             src/analysis/ngram.c   \
+             src/output/alert.c     \
+             src/db/pg_correlate.c  \
+             src/net/reassembly.c
 
 # --------------------------------------------------------------------------- #
 # Optional libpq support                                                      #

@@ -49,15 +49,15 @@ flowchart LR
 
 | Module | Responsibility |
 |--------|----------------|
-| `src/capture.c` | Open live or offline packet sources and apply BPF filtering. |
-| `src/reassembly.c` | Rebuild ordered TCP streams from fragmented packets. |
-| `src/pg_parser.c` | Extract PostgreSQL SQL text from frontend messages. |
-| `src/detector.c` | Run keyword and regex SQLi rules. |
-| `src/ngram.c` | Train, load, and score the n-gram anomaly model. |
-| `src/query_eval.c` | Merge detector, n-gram scoring, and alert emission. |
-| `src/pg_correlate.c` | Enrich passive alerts with `pg_stat_activity`. |
-| `src/db_session.c` | Drive direct database sessions over libpq. |
-| `src/alert.c` | Write JSONL alerts and optional flagged-flow PCAP dumps. |
+| `src/net/capture.c` | Open live or offline packet sources and apply BPF filtering. |
+| `src/net/reassembly.c` | Rebuild ordered TCP streams from fragmented packets. |
+| `src/net/pg_parser.c` | Extract PostgreSQL SQL text from frontend messages. |
+| `src/analysis/detector.c` | Run keyword and regex SQLi rules. |
+| `src/analysis/ngram.c` | Train, load, and score the n-gram anomaly model. |
+| `src/analysis/query_eval.c` | Merge detector, n-gram scoring, and alert emission. |
+| `src/db/pg_correlate.c` | Enrich passive alerts with `pg_stat_activity`. |
+| `src/db/db_session.c` | Drive direct database sessions over libpq. |
+| `src/output/alert.c` | Write JSONL alerts and optional flagged-flow PCAP dumps. |
 | `src/main.c` | CLI orchestration and mode selection. |
 
 ## Data Flow Notes

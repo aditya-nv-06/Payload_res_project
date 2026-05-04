@@ -8,7 +8,7 @@
 #ifndef PG_CORRELATE_H
 #define PG_CORRELATE_H
 
-#include "reassembly.h"   /* flow_t */
+#include "net/reassembly.h"   /* flow_t */
 
 /* -------------------------------------------------------------------------  */
 

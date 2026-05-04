@@ -1,9 +1,9 @@
 /*
  * alert.c – JSON alert output + optional PCAP dump (Milestone 7)
  */
-#include "alert.h"
-#include "util.h"
-#include "pg_parser.h"   /* PG_MAX_QUERY */
+#include "output/alert.h"
+#include "common/util.h"
+#include "net/pg_parser.h"   /* PG_MAX_QUERY */
 
 #include <arpa/inet.h>
 #include <stdio.h>

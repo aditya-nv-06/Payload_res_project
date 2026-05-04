@@ -3,8 +3,8 @@
  *
  * Compiled only when WITH_LIBPQ=1.
  */
-#include "pg_correlate.h"
-#include "util.h"
+#include "db/pg_correlate.h"
+#include "common/util.h"
 
 #ifdef WITH_LIBPQ
 #include <libpq-fe.h>

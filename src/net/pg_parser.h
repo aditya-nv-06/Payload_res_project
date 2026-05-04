@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "reassembly.h"   /* flow_t */
+#include "net/reassembly.h"   /* flow_t */
 
 /* -------------------------------------------------------------------------  */
 

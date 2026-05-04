@@ -1,7 +1,7 @@
 /*
  * capture.c – libpcap wrapper (Milestone 1)
  */
-#include "capture.h"
+#include "net/capture.h"
 
 #include <stdio.h>
 #include <stdlib.h>

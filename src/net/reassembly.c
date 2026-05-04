@@ -1,8 +1,8 @@
 /*
  * reassembly.c – TCP stream reassembly (Milestone 2)
  */
-#include "reassembly.h"
-#include "util.h"
+#include "net/reassembly.h"
+#include "common/util.h"
 
 #include <arpa/inet.h>
 #include <netinet/tcp.h>

@@ -9,9 +9,9 @@
 #include <string.h>
 #include <math.h>
 
-#include "detector.h"
-#include "ngram.h"
-#include "alert.h"
+#include "analysis/detector.h"
+#include "analysis/ngram.h"
+#include "output/alert.h"
 
 /* -------------------------------------------------------------------------- */
 /* Minimal test framework                                                     */

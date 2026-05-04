@@ -20,8 +20,8 @@
  *
  * All others are silently skipped.
  */
-#include "pg_parser.h"
-#include "util.h"
+#include "net/pg_parser.h"
+#include "common/util.h"
 
 #include <arpa/inet.h>
 #include <stdlib.h>

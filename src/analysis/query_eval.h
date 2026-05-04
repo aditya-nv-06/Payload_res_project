@@ -3,11 +3,11 @@
 
 #include <pcap.h>
 
-#include "alert.h"
-#include "detector.h"
-#include "ngram.h"
-#include "pg_correlate.h"
-#include "reassembly.h"
+#include "output/alert.h"
+#include "analysis/detector.h"
+#include "analysis/ngram.h"
+#include "db/pg_correlate.h"
+#include "net/reassembly.h"
 
 typedef struct {
     detector_ctx_t *detector;

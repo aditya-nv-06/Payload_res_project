@@ -1,8 +1,8 @@
 /*
  * detector.c – Rule-based SQLi detection engine (Milestone 4)
  */
-#include "detector.h"
-#include "util.h"
+#include "analysis/detector.h"
+#include "common/util.h"
 
 #include <ctype.h>
 #include <stdio.h>

@@ -38,18 +38,18 @@
 #include <libpq-fe.h>
 #endif
 
-#include "util.h"
-#include "cli.h"
-#include "capture.h"
-#include "reassembly.h"
-#include "pg_parser.h"
-#include "detector.h"
-#include "ngram.h"
-#include "packet_parse.h"
-#include "query_eval.h"
-#include "db_session.h"
-#include "pg_correlate.h"
-#include "alert.h"
+#include "common/util.h"
+#include "app/cli.h"
+#include "net/capture.h"
+#include "net/reassembly.h"
+#include "net/pg_parser.h"
+#include "analysis/detector.h"
+#include "analysis/ngram.h"
+#include "net/packet_parse.h"
+#include "analysis/query_eval.h"
+#include "db/db_session.h"
+#include "db/pg_correlate.h"
+#include "output/alert.h"
 
 /* ========================================================================= */
 /* Global state passed between callbacks                                     */

@@ -32,9 +32,9 @@
 #define ALERT_H
 
 #include <pcap.h>
-#include "reassembly.h"
-#include "detector.h"
-#include "pg_correlate.h"
+#include "net/reassembly.h"
+#include "analysis/detector.h"
+#include "db/pg_correlate.h"
 
 /* -------------------------------------------------------------------------- */
 

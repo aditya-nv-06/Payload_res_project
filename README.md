@@ -16,15 +16,15 @@ For platform-specific run instructions, see [docs/run.md](docs/run.md).
 
 | Source file         | Milestone | Description |
 |---------------------|-----------|-------------|
-| `src/capture.c`     | 1         | libpcap wrapper: live interface or offline .pcap, BPF filter |
-| `src/reassembly.c`  | 2         | TCP stream reassembly: 5-tuple flow table, seq-ordered buffering |
-| `src/pg_parser.c`   | 3         | PostgreSQL wire-protocol parser (Simple Query + Extended Query) |
-| `src/detector.c`    | 4         | Rule-based detector: keyword + POSIX regex, configurable rules |
-| `src/ngram.c`       | 5         | Character trigram model: train, score, save/load |
-| `src/query_eval.c`  | 6         | Shared query evaluation: rules, n-gram scoring, alert emission |
-| `src/pg_correlate.c`| 7         | libpq connector: queries `pg_stat_activity` to enrich alerts |
-| `src/db_session.c`  | 8         | Direct PostgreSQL session driver using libpq |
-| `src/alert.c`       | 9         | JSON-Lines alert output + optional pcap_dump for flagged flows |
+| `src/net/capture.c`     | 1         | libpcap wrapper: live interface or offline .pcap, BPF filter |
+| `src/net/reassembly.c`  | 2         | TCP stream reassembly: 5-tuple flow table, seq-ordered buffering |
+| `src/net/pg_parser.c`   | 3         | PostgreSQL wire-protocol parser (Simple Query + Extended Query) |
+| `src/analysis/detector.c`    | 4         | Rule-based detector: keyword + POSIX regex, configurable rules |
+| `src/analysis/ngram.c`       | 5         | Character trigram model: train, score, save/load |
+| `src/analysis/query_eval.c`  | 6         | Shared query evaluation: rules, n-gram scoring, alert emission |
+| `src/db/pg_correlate.c`| 7         | libpq connector: queries `pg_stat_activity` to enrich alerts |
+| `src/db/db_session.c`  | 8         | Direct PostgreSQL session driver using libpq |
+| `src/output/alert.c`       | 9         | JSON-Lines alert output + optional pcap_dump for flagged flows |
 | `src/main.c`        | 1–9       | Entry point: CLI argument parsing and mode selection |
 
 ## Building
