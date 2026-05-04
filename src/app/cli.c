@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define PQCHECK_VERSION "1.0.0"
 
@@ -35,27 +36,43 @@ static void print_version(const char *prog)
 
 static void print_usage(const char *prog)
 {
-    fprintf(stderr,
-        "\n"
-        "  ╔════════════════════════════════════════════════════════════╗\n"
-        "  ║     PostgreSQL IDS - SQLi Detection Sensor v%s             ║\n"
-        "  ╚════════════════════════════════════════════════════════════╝\n"
-        "\n"
-        "Usage: %s [options]\n"
-        "\n"
-        "CAPTURE OPTIONS:\n"
-        "  -i <iface>     Live capture interface (default: any)\n"
-        "  -r <file>      Read from offline PCAP file\n"
-        "  -f <bpf>       Extra BPF filter (AND-ed with tcp port 5432)\n"
-        "\n"
-        "ANALYSIS OPTIONS:\n"
-        "  -R <rules>     Rules config file (default: config/rules.conf)\n"
-        "  -m <model>     N-gram model file (enables anomaly scoring)\n"
-        "  -T <thresh>    Anomaly threshold (default: -5.0)\n"
-        "\n"
-        "DB SESSION OPTIONS:\n"
-        "  -d <connstr>   Connect to PostgreSQL and execute SQL strings\n",
-        PQCHECK_VERSION, prog);
+    {
+        /* Print a nicely aligned Unicode box header with the program title */
+        const int inner_width = 60;
+        char title[128];
+        snprintf(title, sizeof(title), "PostgreSQL IDS - SQLi Detection Sensor v%s", PQCHECK_VERSION);
+        int tlen = (int)strlen(title);
+        int left = 0, right = 0;
+        if (tlen < inner_width) {
+            left = (inner_width - tlen) / 2;
+            right = inner_width - tlen - left;
+        }
+
+        fprintf(stderr, "\n  ╔");
+        for (int i = 0; i < inner_width; i++) fputs("═", stderr);
+        fprintf(stderr, "╗\n  ║");
+        for (int i = 0; i < left; i++) fputc(' ', stderr);
+        fprintf(stderr, "%s", title);
+        for (int i = 0; i < right; i++) fputc(' ', stderr);
+        fprintf(stderr, "║\n  ╚");
+        for (int i = 0; i < inner_width; i++) fputs("═", stderr);
+        fprintf(stderr, "╝\n\n");
+
+        fprintf(stderr, "Usage: %s [options]\n\n", prog);
+
+        fprintf(stderr,
+            "  -i <iface>     Live capture interface (default: any)\n"
+            "  -r <file>      Read from offline PCAP file\n"
+            "  -f <bpf>       Extra BPF filter (AND-ed with tcp port 5432)\n"
+            "\n"
+            "ANALYSIS OPTIONS:\n"
+            "  -R <rules>     Rules config file (default: config/rules.conf)\n"
+            "  -m <model>     N-gram model file (enables anomaly scoring)\n"
+            "  -T <thresh>    Anomaly threshold (default: -5.0)\n"
+            "\n"
+            "DB SESSION OPTIONS:\n"
+            "  -d <connstr>   Connect to PostgreSQL and execute SQL strings\n"
+        );
 
 #ifdef WITH_LIBPQ
     fprintf(stderr,
@@ -99,6 +116,7 @@ static void print_usage(const char *prog)
         "  %s -d \"host=localhost dbname=postgres user=postgres\" -e \"SELECT 1\"\n"
         "\n",
         prog, prog, prog, prog, prog, prog);
+        }
 }
 
 int cli_parse(int argc, char **argv, cli_options_t *opts, const char *prog)
