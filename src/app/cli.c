@@ -38,7 +38,7 @@ static void print_usage(const char *prog)
     fprintf(stderr,
         "\n"
         "  ╔════════════════════════════════════════════════════════════╗\n"
-        "  ║     PostgreSQL IDS - SQLi Detection Sensor v%s              ║\n"
+        "  ║     PostgreSQL IDS - SQLi Detection Sensor v%s             ║\n"
         "  ╚════════════════════════════════════════════════════════════╝\n"
         "\n"
         "Usage: %s [options]\n"
