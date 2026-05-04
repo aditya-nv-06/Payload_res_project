@@ -4,27 +4,13 @@ A passive network intrusion-detection sensor for PostgreSQL (TCP/5432) written i
 
 ## Architecture
 
-```
-libpcap capture (BPF: tcp port 5432)
-    │
-    ▼
-TCP stream reassembly  ←── per-5-tuple flow table, sequence-ordered buffering
-    │
-    ▼
-PostgreSQL wire-protocol parser  ←── extracts SQL from 'Q' and 'P' messages
-    │
-    ▼
-Rule-based SQLi detector  ←── keyword + POSIX regex rules (config/rules.conf)
-    │
-    ▼
-N-gram anomaly scorer  ←── trigram log-probability model trained on baseline
-    │
-    ▼
-pg_stat_activity correlation (optional, requires libpq)
-    │
-    ▼
-JSON-Lines alert log  [+ optional flagged-flow PCAP dump]
-```
+`pgsql_ids` has two entry modes that share the same detection core:
+
+- passive packet inspection from live capture or offline PCAP, and
+- direct PostgreSQL session mode for executing and scoring SQL statements.
+
+See [docs/architecture.md](docs/architecture.md) for the full Mermaid diagram and module map.
+For platform-specific run instructions, see [docs/run.md](docs/run.md).
 
 ## Components
 
@@ -35,9 +21,11 @@ JSON-Lines alert log  [+ optional flagged-flow PCAP dump]
 | `src/pg_parser.c`   | 3         | PostgreSQL wire-protocol parser (Simple Query + Extended Query) |
 | `src/detector.c`    | 4         | Rule-based detector: keyword + POSIX regex, configurable rules |
 | `src/ngram.c`       | 5         | Character trigram model: train, score, save/load |
-| `src/pg_correlate.c`| 6         | libpq connector: queries `pg_stat_activity` to enrich alerts |
-| `src/alert.c`       | 7         | JSON-Lines alert output + optional pcap_dump for flagged flows |
-| `src/main.c`        | 1–7       | Entry point: CLI argument parsing, wires all modules together |
+| `src/query_eval.c`  | 6         | Shared query evaluation: rules, n-gram scoring, alert emission |
+| `src/pg_correlate.c`| 7         | libpq connector: queries `pg_stat_activity` to enrich alerts |
+| `src/db_session.c`  | 8         | Direct PostgreSQL session driver using libpq |
+| `src/alert.c`       | 9         | JSON-Lines alert output + optional pcap_dump for flagged flows |
+| `src/main.c`        | 1–9       | Entry point: CLI argument parsing and mode selection |
 
 ## Building
 
@@ -73,21 +61,21 @@ The sensor exposes a small Unix-style CLI. The fastest way to see the current
 options is:
 
 ```bash
-./pgsql_ids -h
-./pgsql_ids --version
+pqCheck -h
+pqCheck --version
 ```
 
 ### Common commands
 
 ```bash
 # Offline scan of a PCAP file
-./pgsql_ids -r results/sqli_classic.pcap -R config/rules.conf -o alerts.jsonl -v
+pqCheck -r results/sqli_classic.pcap -R config/rules.conf -o alerts.jsonl -v
 
 # Train an n-gram model from a corpus
-./pgsql_ids -t corpus.sql -m baseline.model
+pqCheck -t corpus.sql -m baseline.model
 
 # Live capture on an interface (usually requires sudo or CAP_NET_RAW)
-sudo ./pgsql_ids -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl -v
+sudo pqCheck -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl -v
 ```
 
 ### Flags
@@ -104,6 +92,8 @@ sudo ./pgsql_ids -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl 
 | `-t <corpus>` | Train an n-gram model from a SQL corpus and save it to `-m` |
 | `-T <threshold>` | Anomaly threshold (default: `-5.0`) |
 | `-c <connstr>` | libpq connection string for `pg_stat_activity` correlation |
+| `-d <connstr>` | Open a direct PostgreSQL session, score each entered query, and execute it |
+| `-e <sql>` | Execute one SQL statement in `-d` mode, then disconnect |
 | `-v` | Verbose mode |
 | `-h`, `--help` | Show CLI help |
 | `--version` | Print the current CLI version |
@@ -129,7 +119,7 @@ INSERT INTO events (ts, msg) VALUES (now(), $1)
 UPDATE users SET last_login = now() WHERE id = $1
 EOF
 
-./pgsql_ids -t /tmp/baseline.sql -m /tmp/baseline.model
+pqCheck -t /tmp/baseline.sql -m /tmp/baseline.model
 ```
 
 ### 2. Generate test PCAP files
@@ -142,7 +132,7 @@ python3 tests/gen_test_traffic.py --out /tmp/pcaps
 ### 3. Scan a PCAP file for injections
 
 ```bash
-./pgsql_ids \
+pqCheck \
   -r /tmp/pcaps/sqli_classic.pcap \
   -R config/rules.conf \
   -m /tmp/baseline.model \
@@ -153,7 +143,7 @@ python3 tests/gen_test_traffic.py --out /tmp/pcaps
 ### 4. Scan live traffic (requires root / CAP_NET_RAW)
 
 ```bash
-sudo ./pgsql_ids \
+sudo pqCheck \
   -i eth0 \
   -R config/rules.conf \
   -m /tmp/baseline.model \
@@ -161,10 +151,34 @@ sudo ./pgsql_ids \
   -v
 ```
 
-### 5. With pg_stat_activity correlation
+### 5. Use a custom BPF filter
 
 ```bash
-sudo ./pgsql_ids \
+pqCheck \
+  -r /tmp/pcaps/sqli_classic.pcap \
+  -f "host 10.0.0.2" \
+  -R config/rules.conf \
+  -m /tmp/baseline.model \
+  -o /tmp/alerts.jsonl \
+  -v
+```
+
+### 6. Dump flagged packets to PCAP
+
+```bash
+pqCheck \
+  -r /tmp/pcaps/sqli_classic.pcap \
+  -R config/rules.conf \
+  -m /tmp/baseline.model \
+  -p /tmp/flagged.pcap \
+  -o /tmp/alerts.jsonl \
+  -v
+```
+
+### 7. Use pg_stat_activity correlation
+
+```bash
+sudo pqCheck \
   -i lo \
   -R config/rules.conf \
   -c "host=localhost dbname=postgres user=postgres" \
@@ -172,7 +186,30 @@ sudo ./pgsql_ids \
   -v
 ```
 
-### 6. Inspect alerts
+### 8. Direct database session mode
+
+```bash
+pqCheck \
+  -d "host=localhost dbname=postgres user=postgres" \
+  -m /tmp/baseline.model \
+  -o /tmp/db-alerts.jsonl \
+  -v
+```
+
+In this mode, the tool connects to PostgreSQL, evaluates every entered SQL statement with the rule engine and n-gram model, executes it, and closes the session when you type `\disconnect` or press `Ctrl-D`. You can also run a single statement with `-e`.
+
+### 9. Execute a single statement
+
+```bash
+pqCheck \
+  -d "host=localhost dbname=postgres user=postgres" \
+  -e "SELECT now()" \
+  -m /tmp/baseline.model \
+  -o /tmp/db-alerts.jsonl \
+  -v
+```
+
+### 10. Inspect alerts
 
 ```bash
 # Pretty-print:

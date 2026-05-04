@@ -193,7 +193,7 @@ def main():
 
     print(f"\nGenerated {len(configs)} PCAP files in {args.out}/")
     print("Run the sensor against each with:")
-    print(f"  ./pgsql_ids -r {args.out}/sqli_classic.pcap -R config/rules.conf -v")
+    print(f"  pqCheck -r {args.out}/sqli_classic.pcap -R config/rules.conf -v")
 
 
 if __name__ == "__main__":

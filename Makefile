@@ -21,6 +21,8 @@ SRCS := src/util.c      \
         src/pg_parser.c \
         src/detector.c  \
         src/ngram.c     \
+  src/query_eval.c \
+  src/db_session.c \
         src/pg_correlate.c \
         src/alert.c     \
         src/main.c

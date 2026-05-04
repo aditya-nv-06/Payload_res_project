@@ -5,9 +5,9 @@ This document covers the command-line interface for `pgsql_ids`, the PostgreSQL 
 ## Synopsis
 
 ```bash
-./pgsql_ids [options]
-./pgsql_ids -h
-./pgsql_ids --version
+pqCheck [options]
+pqCheck -h
+pqCheck --version
 ```
 
 ## What the CLI does
@@ -23,6 +23,115 @@ This document covers the command-line interface for `pgsql_ids`, the PostgreSQL 
 - optionally correlate alerts with `pg_stat_activity`, and
 - write JSON-Lines alerts plus optional packet dumps.
 
+For a full architecture diagram and module breakdown, see [docs/architecture.md](architecture.md).
+For platform-specific build and run instructions, see [docs/run.md](run.md).
+
+## Feature Guide
+
+### Help and version
+
+```bash
+pqCheck -h
+pqCheck --version
+```
+
+### Offline PCAP scan
+
+```bash
+pqCheck \
+  -r results/sqli_classic.pcap \
+  -R config/rules.conf \
+  -m baseline.model \
+  -o alerts.jsonl \
+  -v
+```
+
+### Live capture
+
+```bash
+sudo pqCheck \
+  -i eth0 \
+  -R config/rules.conf \
+  -m baseline.model \
+  -o alerts.jsonl \
+  -v
+```
+
+### Custom BPF filter
+
+```bash
+pqCheck \
+  -r results/sqli_fragmented.pcap \
+  -f "host 10.0.0.2" \
+  -R config/rules.conf \
+  -m baseline.model \
+  -o alerts.jsonl \
+  -v
+```
+
+### Train an n-gram model
+
+```bash
+pqCheck -t corpus.sql -m baseline.model
+```
+
+### Flagged packet dump
+
+```bash
+pqCheck \
+  -r results/sqli_classic.pcap \
+  -R config/rules.conf \
+  -m baseline.model \
+  -p flagged.pcap \
+  -o alerts.jsonl \
+  -v
+```
+
+### pg_stat_activity correlation
+
+```bash
+sudo pqCheck \
+  -i lo \
+  -R config/rules.conf \
+  -c "host=localhost dbname=postgres user=postgres" \
+  -o alerts.jsonl \
+  -v
+```
+
+### Direct database session
+
+```bash
+pqCheck \
+  -d "host=localhost dbname=postgres user=postgres" \
+  -m baseline.model \
+  -o alerts.jsonl \
+  -v
+```
+
+In direct session mode, type SQL statements, then `\disconnect` or `Ctrl-D` to close the session. You can also run one statement with `-e`.
+
+### Single-statement execution
+
+```bash
+pqCheck \
+  -d "host=localhost dbname=postgres user=postgres" \
+  -e "SELECT 1" \
+  -m baseline.model \
+  -o alerts.jsonl \
+  -v
+```
+
+### Custom rules
+
+```bash
+pqCheck \
+  -r results/sqli_obfuscated.pcap \
+  -R config/rules.conf \
+  -m baseline.model \
+  -o alerts.jsonl \
+  -v
+```
+
 ## Options
 
 | Flag | Description |
@@ -37,50 +146,11 @@ This document covers the command-line interface for `pgsql_ids`, the PostgreSQL 
 | `-t <corpus>` | Train an n-gram model from a corpus file and save it to `-m`. |
 | `-T <threshold>` | Anomaly threshold. Default: `-5.0`. Lower values are stricter. |
 | `-c <connstr>` | libpq connection string for `pg_stat_activity` correlation. |
+| `-d <connstr>` | Open a direct PostgreSQL session, score each entered query, and execute it. |
+| `-e <sql>` | Execute one SQL statement in `-d` mode, then disconnect. |
 | `-v` | Verbose logging to stderr. |
 | `-h`, `--help` | Show help. |
 | `--version` | Print the CLI version. |
-
-## Examples
-
-### 1. Show help
-
-```bash
-./pgsql_ids -h
-```
-
-### 2. Show version
-
-```bash
-./pgsql_ids --version
-```
-
-### 3. Analyze an offline PCAP
-
-```bash
-./pgsql_ids \
-  -r results/sqli_classic.pcap \
-  -R config/rules.conf \
-  -o alerts.jsonl \
-  -v
-```
-
-### 4. Train an n-gram model
-
-```bash
-./pgsql_ids -t corpus.sql -m baseline.model
-```
-
-### 5. Live capture
-
-```bash
-sudo ./pgsql_ids \
-  -i eth0 \
-  -R config/rules.conf \
-  -m baseline.model \
-  -o alerts.jsonl \
-  -v
-```
 
 ## Verbose mode output
 

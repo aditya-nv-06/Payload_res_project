@@ -24,12 +24,15 @@
  *                     to -m path, then exit
  *   -T <threshold>    Anomaly score threshold (default: -5.0; lower = stricter)
  *   -c <connstr>      libpq connection string for pg_stat_activity correlation
+ *   -d <connstr>      Direct PostgreSQL session mode; execute and score SQL
+ *   -e <sql>          Execute one SQL statement in -d mode, then exit
  *   -v                Verbose: also print alerts to stderr
  *   -h                Show this help
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -39,12 +42,18 @@
 #include <pcap.h>
 #include <time.h>
 
+#ifdef WITH_LIBPQ
+#include <libpq-fe.h>
+#endif
+
 #include "util.h"
 #include "capture.h"
 #include "reassembly.h"
 #include "pg_parser.h"
 #include "detector.h"
 #include "ngram.h"
+#include "query_eval.h"
+#include "db_session.h"
 #include "pg_correlate.h"
 #include "alert.h"
 
@@ -61,6 +70,7 @@ typedef struct {
     double              anomaly_threshold;
     alert_ctx_t         alert;
     pg_correlate_ctx_t *pg_corr;
+    query_eval_ctx_t    eval;
 
     /* Current raw packet for PCAP dump (set per packet in on_packet) */
     const struct pcap_pkthdr *cur_hdr;
@@ -80,43 +90,13 @@ static void on_query(flow_t *flow, const char *sql, size_t len, void *user)
 {
     (void)len;
     app_ctx_t *app = (app_ctx_t *)user;
-
-    detect_result_t result;
-    detector_check(&app->detector, sql, &result);
-
-    double ascore = 0.0;
-    if (app->ngram_loaded)
-        ascore = ngram_score(&app->ngram, sql);
-
-    /* Only emit an alert if something looks suspicious */
-    int flag_rule  = result.matched;
-    int flag_anom  = (app->ngram_loaded &&
-                      app->anomaly_threshold != 0.0 &&
-                      ascore < app->anomaly_threshold);
-
-    if (!flag_rule && !flag_anom) return;
-
-    /* pg_stat_activity correlation */
     pg_row_t pg_row;
     memset(&pg_row, 0, sizeof(pg_row));
-    int have_pg = 0;
-    if (app->pg_corr)
-        have_pg = pg_correlate_lookup(app->pg_corr, flow, &pg_row);
+    const pg_row_t *pg_row_ptr = NULL;
+    if (app->pg_corr && pg_correlate_lookup(app->pg_corr, flow, &pg_row))
+        pg_row_ptr = &pg_row;
 
-    alert_emit(&app->alert,
-               flow, sql, &result, ascore,
-               have_pg ? &pg_row : NULL,
-               app->cur_hdr, app->cur_pkt);
-
-    if (app->verbose) {
-        char flow_id[17];
-        reassembly_flow_id(flow, flow_id);
-        fprintf(stderr,
-                "[ALERT] flow=%s risk=%s rules=%d anomaly=%.3f sql=%.80s\n",
-                flow_id,
-                alert_risk_level(result.score, ascore, app->anomaly_threshold),
-                result.match_count, ascore, sql);
-    }
+    query_eval_run(&app->eval, flow, sql, 0, pg_row_ptr, app->cur_hdr, app->cur_pkt);
 }
 
 /* ========================================================================= */
@@ -222,10 +202,11 @@ static void on_packet(const struct pcap_pkthdr *hdr,
 
 #define PGSQL_IDS_VERSION "1.0.0"
 
-static void print_version(void)
+static void print_version(const char *prog)
 {
-    printf("pgsql_ids v%s\n"
+    printf("%s v%s\n"
            "PostgreSQL Payload Fragmentation & SQLi Detection Sensor\n",
+           prog,
            PGSQL_IDS_VERSION);
 }
 
@@ -248,6 +229,10 @@ static void usage(const char *prog)
         "  -R <rules>     Rules config file (default: config/rules.conf)\n"
         "  -m <model>     N-gram model file (enables anomaly scoring)\n"
         "  -T <thresh>    Anomaly threshold (default: -5.0)\n"
+        "\n"
+        "DB SESSION OPTIONS:\n"
+        "  -d <connstr>   Connect to PostgreSQL and execute SQL strings\n"
+        "  -e <sql>       Execute one SQL statement in -d mode, then exit\n"
         "\n"
         "OUTPUT OPTIONS:\n"
         "  -o <file>      Alert log file (default: alerts.jsonl)\n"
@@ -276,8 +261,14 @@ static void usage(const char *prog)
         "\n"
         "  # Advanced: anomaly + rule detection + packet dump\n"
         "  %s -r pcap.file -m model.ngram -p flagged.pcap -o alerts.jsonl\n"
+        "\n"
+        "  # Connect to a database and evaluate each entered SQL statement\n"
+        "  %s -d \"host=localhost dbname=postgres user=postgres\" -v\n"
+        "\n"
+        "  # Execute a single SQL statement in database session mode\n"
+        "  %s -d \"host=localhost dbname=postgres user=postgres\" -e \"SELECT 1\"\n"
         "\n",
-        PGSQL_IDS_VERSION, prog, prog, prog, prog, prog);
+        PGSQL_IDS_VERSION, prog, prog, prog, prog, prog, prog, prog);
 }
 
 /* ========================================================================= */
@@ -296,6 +287,8 @@ int main(int argc, char *argv[])
     const char *model_path  = NULL;
     const char *corpus_path = NULL;
     const char *pg_connstr  = NULL;
+    const char *db_connstr  = NULL;
+    const char *db_sql      = NULL;
     double      anomaly_thr = -5.0;
     int         verbose     = 0;
 
@@ -306,13 +299,13 @@ int main(int argc, char *argv[])
             return 0;
         }
         if (strcmp(argv[1], "--version") == 0) {
-            print_version();
+            print_version(argv[0]);
             return 0;
         }
     }
 
     int opt;
-    while ((opt = getopt(argc, argv, "i:r:f:R:o:p:m:t:T:c:vh")) != -1) {
+    while ((opt = getopt(argc, argv, "i:r:f:R:o:p:m:t:T:c:d:e:vh")) != -1) {
         switch (opt) {
         case 'i': iface       = optarg; break;
         case 'r': pcap_file   = optarg; break;
@@ -330,6 +323,8 @@ int main(int argc, char *argv[])
             }
             break;
         case 'c': pg_connstr  = optarg; break;
+        case 'd': db_connstr  = optarg; break;
+        case 'e': db_sql      = optarg; break;
         case 'v': verbose     = 1; break;
         case 'h': usage(argv[0]); return 0;
         case '?':
@@ -382,17 +377,30 @@ int main(int argc, char *argv[])
     g_app.verbose           = verbose;
 
     if (verbose) {
-        fprintf(stderr,
-            "\n"
-            "[CONFIG] Capture Mode: %s\n"
-            "[CONFIG] Rules File: %s\n"
-            "[CONFIG] Alert Output: %s\n"
-            "[CONFIG] Anomaly Threshold: %.2f\n"
-            "\n",
-            pcap_file ? pcap_file : iface,
-            rules_path,
-            alert_path,
-            anomaly_thr);
+        if (db_connstr) {
+            fprintf(stderr,
+                "\n"
+                "[CONFIG] Mode: database session\n"
+                "[CONFIG] Rules File: %s\n"
+                "[CONFIG] Alert Output: %s\n"
+                "[CONFIG] Anomaly Threshold: %.2f\n"
+                "\n",
+                rules_path,
+                alert_path,
+                anomaly_thr);
+        } else {
+            fprintf(stderr,
+                "\n"
+                "[CONFIG] Capture Mode: %s\n"
+                "[CONFIG] Rules File: %s\n"
+                "[CONFIG] Alert Output: %s\n"
+                "[CONFIG] Anomaly Threshold: %.2f\n"
+                "\n",
+                pcap_file ? pcap_file : iface,
+                rules_path,
+                alert_path,
+                anomaly_thr);
+        }
     }
 
     /* ---- Load detection rules ---- */
@@ -406,6 +414,37 @@ int main(int argc, char *argv[])
         if (ngram_load(&g_app.ngram, model_path) == 0)
             g_app.ngram_loaded = 1;
     }
+
+    query_eval_init(&g_app.eval,
+                    &g_app.detector,
+                    &g_app.ngram,
+                    g_app.ngram_loaded,
+                    g_app.anomaly_threshold,
+                    &g_app.alert,
+                    g_app.verbose);
+
+#ifdef WITH_LIBPQ
+    if (db_connstr) {
+        if (alert_open(&g_app.alert, alert_path, pcap_dump, DLT_RAW) < 0) {
+            detector_free(&g_app.detector);
+            if (g_app.ngram_loaded) ngram_free(&g_app.ngram);
+            return 1;
+        }
+
+        int rc = db_session_run(db_connstr, db_sql, &g_app.eval);
+        alert_close(&g_app.alert);
+        detector_free(&g_app.detector);
+        if (g_app.ngram_loaded) ngram_free(&g_app.ngram);
+        return rc;
+    }
+#else
+    if (db_connstr) {
+        fprintf(stderr, "[main] database session mode requires WITH_LIBPQ=1\n");
+        detector_free(&g_app.detector);
+        if (g_app.ngram_loaded) ngram_free(&g_app.ngram);
+        return 1;
+    }
+#endif
 
     /* ---- PostgreSQL correlation (optional) ---- */
     if (pg_connstr) {
