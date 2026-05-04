@@ -56,6 +56,14 @@ make WITH_LIBPQ=1
 make test
 ```
 
+### Install the `pqCheck` command
+
+```bash
+make install
+```
+
+This places `pqCheck` and the built `pgsql_ids` binary in `~/.local/bin`, which is already on `PATH` in this workspace.
+
 ## CLI
 
 The sensor exposes a small Unix-style CLI. The fastest way to see the current

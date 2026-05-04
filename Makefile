@@ -12,6 +12,9 @@ CFLAGS  := -std=c11 -Wall -Wextra -Wpedantic -O2 -g \
            -Isrc
 LDFLAGS := -lpcap -lm
 
+PREFIX  ?= $(HOME)/.local
+BINDIR  ?= $(PREFIX)/bin
+
 TARGET  := pgsql_ids
 TEST_TARGET := test_detector
 
@@ -50,7 +53,7 @@ endif
 # Build rules                                                                 #
 # --------------------------------------------------------------------------- #
 
-.PHONY: all test clean
+.PHONY: all test clean install uninstall
 
 all: $(TARGET)
 
@@ -67,6 +70,16 @@ test: $(TEST_TARGET)
 clean:
 	rm -f $(TARGET) $(TEST_TARGET) *.o
 	@echo "Cleaned"
+
+install: $(TARGET) pqCheck
+	@mkdir -p $(BINDIR)
+	install -m 755 $(TARGET) $(BINDIR)/$(TARGET)
+	install -m 755 pqCheck $(BINDIR)/pqCheck
+	@echo "Installed to $(BINDIR)"
+
+uninstall:
+	rm -f $(BINDIR)/$(TARGET) $(BINDIR)/pqCheck
+	@echo "Removed from $(BINDIR)"
 
 # Show effective build flags
 info:
