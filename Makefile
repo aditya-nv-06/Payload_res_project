@@ -12,7 +12,11 @@ CFLAGS  := -std=c11 -Wall -Wextra -Wpedantic -O2 -g \
            -Isrc
 LDFLAGS := -lpcap -lm
 
+ifeq ($(shell id -u),0)
+PREFIX  ?= /usr/local
+else
 PREFIX  ?= $(HOME)/.local
+endif
 BINDIR  ?= $(PREFIX)/bin
 
 TARGET  := pgsql_ids

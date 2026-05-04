@@ -139,6 +139,14 @@ What happens:
 - the query is executed on the database, and
 - you can leave the session with `\disconnect` or `Ctrl-D`.
 
+Automation: A small demo script that runs example queries and writes
+alerts to `db-alerts.jsonl` is provided at [tests/db_session_demo.sh](tests/db_session_demo.sh).
+Run it with:
+
+```bash
+bash tests/db_session_demo.sh
+```
+
 ## 8. Run one statement and exit
 
 Use this when you only need a single query checked and executed once.

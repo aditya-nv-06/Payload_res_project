@@ -62,7 +62,8 @@ make test
 make install
 ```
 
-This places `pqCheck` and the built `pgsql_ids` binary in `~/.local/bin`, which is already on `PATH` in this workspace.
+This places `pqCheck` and the built `pgsql_ids` binary in `~/.local/bin` for a normal user install.
+If you want `sudo pqCheck` to work, run `sudo make install` so the launcher is installed into `/usr/local/bin`, which is on sudo's search path on most Linux systems.
 
 ## CLI
 
