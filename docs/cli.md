@@ -48,6 +48,8 @@ pqCheck \
 
 ### Live capture
 
+If you want to invoke the launcher through `sudo`, install it system-wide first with `sudo make install` so `pqCheck` is placed in `/usr/local/bin`.
+
 ```bash
 sudo pqCheck \
   -i eth0 \

@@ -20,9 +20,9 @@ typedef struct capture_ctx capture_ctx_t;
  *   pkt   – raw packet bytes starting at the link layer
  *   user  – opaque pointer supplied to capture_loop()
  */
-typedef void (*packet_cb_t)(const struct pcap_pkthdr *hdr,
-                            const uint8_t            *pkt,
-                            void                     *user);
+typedef void (*packet_cb_t)(u_char                   *user,
+                            const struct pcap_pkthdr *hdr,
+                            const uint8_t            *pkt);
 
 /*
  * Open a live capture on 'iface'.

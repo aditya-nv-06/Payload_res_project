@@ -104,9 +104,9 @@ static void on_reassembled(flow_t *flow, const uint8_t *data,
     pg_parser_feed(&app->pg_parser, flow, data, len);
 }
 
-static void on_packet(const struct pcap_pkthdr *hdr,
-                      const uint8_t            *pkt,
-                      void                     *user)
+static void on_packet(u_char                   *user,
+                      const struct pcap_pkthdr *hdr,
+                      const uint8_t            *pkt)
 {
     app_ctx_t  *app = (app_ctx_t *)user;
     static time_t last_expire = 0;
