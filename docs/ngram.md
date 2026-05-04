@@ -59,6 +59,71 @@ What happens:
 - trigram counts are collected,
 - the learned model is written to `baseline.model`.
 
+## Training demo
+
+This is a complete example that shows how to build a small training corpus, train the model, and then use it for scanning.
+
+### 1. Create a corpus of normal SQL
+
+Create a text file where each line is one SQL statement that represents normal application behavior.
+
+```bash
+cat > /tmp/baseline.sql <<'EOF'
+SELECT id, name FROM users WHERE id = $1
+SELECT count(*) FROM orders WHERE status = 'complete'
+INSERT INTO events (ts, msg) VALUES (now(), $1)
+UPDATE users SET last_login = now() WHERE id = $1
+DELETE FROM sessions WHERE expires_at < now()
+EOF
+```
+
+Why this matters:
+
+- the model learns the pattern of ordinary SQL,
+- parameterized queries help the model focus on structure instead of values,
+- the corpus should look like the traffic you expect in production.
+
+### 2. Train the model from the corpus
+
+```bash
+pqCheck -t /tmp/baseline.sql -m /tmp/baseline.model
+```
+
+What happens:
+
+- each line is read as a training example,
+- trigram statistics are collected,
+- the trained model is written to `/tmp/baseline.model`.
+
+### 3. Use the model while scanning
+
+```bash
+pqCheck \
+	-r results/sqli_classic.pcap \
+	-R config/rules.conf \
+	-m /tmp/baseline.model \
+	-o /tmp/alerts.jsonl \
+	-v
+```
+
+What happens:
+
+- each extracted query is scored against the trained corpus model,
+- normal-looking SQL tends to score higher,
+- unusual or injected SQL tends to score lower and may trigger an alert.
+
+### 4. Check the model output
+
+```bash
+jq . /tmp/alerts.jsonl
+```
+
+What to look for:
+
+- the `anomaly_score` field shows how unusual the query looked,
+- the `risk_level` shows whether the query was considered suspicious,
+- the `extracted_sql` field shows the SQL that was scored.
+
 ## Scoring workflow
 
 Use `-m` to load a trained model while scanning traffic or running direct session mode.
