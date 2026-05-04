@@ -16,11 +16,13 @@ TARGET  := pgsql_ids
 TEST_TARGET := test_detector
 
 SRCS := src/util.c      \
+  src/cli.c      \
         src/capture.c   \
         src/reassembly.c\
         src/pg_parser.c \
         src/detector.c  \
         src/ngram.c     \
+    src/packet_parse.c \
   src/query_eval.c \
   src/db_session.c \
         src/pg_correlate.c \

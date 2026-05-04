@@ -29,16 +29,8 @@
  *   -v                Verbose: also print alerts to stderr
  *   -h                Show this help
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <unistd.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <net/ethernet.h>
 #include <pcap.h>
 #include <time.h>
 
@@ -47,11 +39,13 @@
 #endif
 
 #include "util.h"
+#include "cli.h"
 #include "capture.h"
 #include "reassembly.h"
 #include "pg_parser.h"
 #include "detector.h"
 #include "ngram.h"
+#include "packet_parse.h"
 #include "query_eval.h"
 #include "db_session.h"
 #include "pg_correlate.h"
@@ -110,15 +104,6 @@ static void on_reassembled(flow_t *flow, const uint8_t *data,
     pg_parser_feed(&app->pg_parser, flow, data, len);
 }
 
-/* ========================================================================= */
-/* Packet callback (called by libpcap for every captured packet)            */
-/* ========================================================================= */
-
-/*
- * Extract src/dst IP and TCP segment info from a raw packet and feed it
- * to the reassembler.  Handles Ethernet (DLT_EN10MB) and Linux cooked
- * (DLT_LINUX_SLL) link layers.
- */
 static void on_packet(const struct pcap_pkthdr *hdr,
                       const uint8_t            *pkt,
                       void                     *user)
@@ -130,64 +115,15 @@ static void on_packet(const struct pcap_pkthdr *hdr,
     app->cur_hdr = hdr;
     app->cur_pkt = pkt;
 
-    const uint8_t *ip_start = NULL;
-    uint32_t       caplen   = hdr->caplen;
-
-    switch (app->datalink) {
-    case DLT_EN10MB:
-        /* 14-byte Ethernet header */
-        if (caplen < 14) return;
-        /* Check EtherType = IPv4 (0x0800) */
-        if (pkt[12] != 0x08 || pkt[13] != 0x00) return;
-        ip_start = pkt + 14;
-        caplen  -= 14;
-        break;
-    case DLT_LINUX_SLL:
-        /* 16-byte Linux cooked header */
-        if (caplen < 16) return;
-        /* Bytes 14-15: EtherType */
-        if (pkt[14] != 0x08 || pkt[15] != 0x00) return;
-        ip_start = pkt + 16;
-        caplen  -= 16;
-        break;
-    case DLT_RAW:
-        ip_start = pkt;
-        break;
-    default:
+    packet_info_t info;
+    if (!packet_parse(hdr, pkt, app->datalink, &info))
         return;
-    }
-
-    if (!ip_start || caplen < sizeof(struct ip)) return;
-
-    const struct ip *iph = (const struct ip *)ip_start;
-    if (iph->ip_v != 4) return;                     /* IPv4 only */
-    if (iph->ip_p != IPPROTO_TCP) return;
-
-    uint32_t ip_hlen = (uint32_t)(iph->ip_hl) * 4;
-    if (ip_hlen < 20 || ip_hlen > caplen) return;
-
-    const struct tcphdr *tcph = (const struct tcphdr *)(ip_start + ip_hlen);
-    uint32_t remaining = caplen - ip_hlen;
-    if (remaining < sizeof(struct tcphdr)) return;
-
-    uint32_t tcp_hlen = (uint32_t)(tcph->th_off) * 4;
-    if (tcp_hlen < 20 || tcp_hlen > remaining) return;
-
-    const uint8_t *payload     = ip_start + ip_hlen + tcp_hlen;
-    uint32_t       payload_len = remaining - tcp_hlen;
-
-    uint32_t src_ip   = ntohl(iph->ip_src.s_addr);
-    uint32_t dst_ip   = ntohl(iph->ip_dst.s_addr);
-    uint16_t src_port = ntohs(tcph->th_sport);
-    uint16_t dst_port = ntohs(tcph->th_dport);
-    uint32_t seq      = ntohl(tcph->th_seq);
-    uint8_t  flags    = (uint8_t)tcph->th_flags;
 
     time_t now = (time_t)hdr->ts.tv_sec;
 
     reassembly_feed(&app->reassembly,
-                    src_ip, dst_ip, src_port, dst_port,
-                    seq, flags, payload, payload_len, now);
+                    info.src_ip, info.dst_ip, info.src_port, info.dst_port,
+                    info.seq, info.flags, info.payload, info.payload_len, now);
 
     /* Periodic flow expiry (every 30 seconds of capture time) */
     if (now - last_expire > 30) {
@@ -196,144 +132,29 @@ static void on_packet(const struct pcap_pkthdr *hdr,
     }
 }
 
-/* ========================================================================= */
-/* Version and Usage                                                          */
-/* ========================================================================= */
-
-#define PGSQL_IDS_VERSION "1.0.0"
-
-static void print_version(const char *prog)
-{
-    printf("%s v%s\n"
-           "PostgreSQL Payload Fragmentation & SQLi Detection Sensor\n",
-           prog,
-           PGSQL_IDS_VERSION);
-}
-
-static void usage(const char *prog)
-{
-    fprintf(stderr,
-        "\n"
-        "  ╔════════════════════════════════════════════════════════════╗\n"
-        "  ║     PostgreSQL IDS - SQLi Detection Sensor v%s              ║\n"
-        "  ╚════════════════════════════════════════════════════════════╝\n"
-        "\n"
-        "Usage: %s [options]\n"
-        "\n"
-        "CAPTURE OPTIONS:\n"
-        "  -i <iface>     Live capture interface (default: any)\n"
-        "  -r <file>      Read from offline PCAP file\n"
-        "  -f <bpf>       Extra BPF filter (AND-ed with tcp port 5432)\n"
-        "\n"
-        "ANALYSIS OPTIONS:\n"
-        "  -R <rules>     Rules config file (default: config/rules.conf)\n"
-        "  -m <model>     N-gram model file (enables anomaly scoring)\n"
-        "  -T <thresh>    Anomaly threshold (default: -5.0)\n"
-        "\n"
-        "DB SESSION OPTIONS:\n"
-        "  -d <connstr>   Connect to PostgreSQL and execute SQL strings\n"
-        "  -e <sql>       Execute one SQL statement in -d mode, then exit\n"
-        "\n"
-        "OUTPUT OPTIONS:\n"
-        "  -o <file>      Alert log file (default: alerts.jsonl)\n"
-        "  -p <file>      Dump flagged packets to PCAP file\n"
-        "\n"
-        "TRAINING:\n"
-        "  -t <corpus>    Train n-gram model from corpus (requires -m)\n"
-        "\n"
-        "DATABASE OPTIONS:\n"
-        "  -c <connstr>   libpq connection string for pg_stat_activity\n"
-        "\n"
-        "OTHER:\n"
-        "  -v             Verbose output to stderr\n"
-        "  --version      Show version information\n"
-        "  -h, --help     Show this help message\n"
-        "\n"
-        "EXAMPLES:\n"
-        "  # Live capture on eth0 with verbose output\n"
-        "  %s -i eth0 -R config/rules.conf -v\n"
-        "\n"
-        "  # Analyze offline PCAP file\n"
-        "  %s -r capture.pcap -R config/rules.conf -o alerts.jsonl\n"
-        "\n"
-        "  # Train anomaly model from SQL corpus\n"
-        "  %s -t corpus.sql -m model.ngram -v\n"
-        "\n"
-        "  # Advanced: anomaly + rule detection + packet dump\n"
-        "  %s -r pcap.file -m model.ngram -p flagged.pcap -o alerts.jsonl\n"
-        "\n"
-        "  # Connect to a database and evaluate each entered SQL statement\n"
-        "  %s -d \"host=localhost dbname=postgres user=postgres\" -v\n"
-        "\n"
-        "  # Execute a single SQL statement in database session mode\n"
-        "  %s -d \"host=localhost dbname=postgres user=postgres\" -e \"SELECT 1\"\n"
-        "\n",
-        PGSQL_IDS_VERSION, prog, prog, prog, prog, prog, prog, prog);
-}
-
-/* ========================================================================= */
-/* main                                                                      */
-/* ========================================================================= */
-
 int main(int argc, char *argv[])
 {
-    /* ---- Defaults ---- */
-    const char *iface       = "any";
-    const char *pcap_file   = NULL;
-    const char *bpf_extra   = NULL;
-    const char *rules_path  = "config/rules.conf";
-    const char *alert_path  = "alerts.jsonl";
-    const char *pcap_dump   = NULL;
-    const char *model_path  = NULL;
-    const char *corpus_path = NULL;
-    const char *pg_connstr  = NULL;
-    const char *db_connstr  = NULL;
-    const char *db_sql      = NULL;
-    double      anomaly_thr = -5.0;
-    int         verbose     = 0;
+    cli_options_t cli;
+    cli_options_init(&cli);
+    int cli_rc = cli_parse(argc, argv, &cli, argv[0]);
+    if (cli_rc != 0)
+        return (cli_rc > 0) ? 0 : 1;
 
-    /* ---- Handle long options ---- */
-    if (argc > 1) {
-        if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
-            usage(argv[0]);
-            return 0;
-        }
-        if (strcmp(argv[1], "--version") == 0) {
-            print_version(argv[0]);
-            return 0;
-        }
-    }
-
-    int opt;
-    while ((opt = getopt(argc, argv, "i:r:f:R:o:p:m:t:T:c:d:e:vh")) != -1) {
-        switch (opt) {
-        case 'i': iface       = optarg; break;
-        case 'r': pcap_file   = optarg; break;
-        case 'f': bpf_extra   = optarg; break;
-        case 'R': rules_path  = optarg; break;
-        case 'o': alert_path  = optarg; break;
-        case 'p': pcap_dump   = optarg; break;
-        case 'm': model_path  = optarg; break;
-        case 't': corpus_path = optarg; break;
-        case 'T': 
-            anomaly_thr = atof(optarg);
-            if (anomaly_thr == 0.0) {
-                fprintf(stderr, "[ERROR] Invalid threshold value: %s\n", optarg);
-                return 1;
-            }
-            break;
-        case 'c': pg_connstr  = optarg; break;
-        case 'd': db_connstr  = optarg; break;
-        case 'e': db_sql      = optarg; break;
-        case 'v': verbose     = 1; break;
-        case 'h': usage(argv[0]); return 0;
-        case '?':
-        default:
-            fprintf(stderr, "\n[ERROR] Invalid option: -%c\n", optopt);
-            fprintf(stderr, "Use '%s -h' for help.\n\n", argv[0]);
-            return 1;
-        }
-    }
+    const char *iface       = cli.iface;
+    const char *pcap_file   = cli.pcap_file;
+    const char *bpf_extra   = cli.bpf_extra;
+    const char *rules_path  = cli.rules_path;
+    const char *alert_path  = cli.alert_path;
+    const char *pcap_dump   = cli.pcap_dump;
+    const char *model_path  = cli.model_path;
+    const char *corpus_path = cli.corpus_path;
+    const char *pg_connstr  = cli.pg_connstr;
+    const char *db_connstr  = cli.db_connstr;
+#ifdef WITH_LIBPQ
+    const char *db_sql      = cli.db_sql;
+#endif
+    double      anomaly_thr = cli.anomaly_thr;
+    int         verbose     = cli.verbose;
 
     /* ---- Validate arguments ---- */
     if (pcap_file && !pcap_file[0]) {

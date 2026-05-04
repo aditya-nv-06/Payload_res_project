@@ -1,13 +1,14 @@
 #include "db_session.h"
 
-#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
 #ifdef WITH_LIBPQ
+#include <ctype.h>
 #include <libpq-fe.h>
 #endif
 
+#ifdef WITH_LIBPQ
 static char *trim_whitespace(char *text)
 {
     while (*text && isspace((unsigned char)*text)) text++;
@@ -27,6 +28,7 @@ static int is_disconnect_command(const char *text)
            strcmp(text, "quit") == 0 ||
            strcmp(text, "exit") == 0;
 }
+#endif
 
 int db_session_run(const char *connstr,
                    const char *sql,
