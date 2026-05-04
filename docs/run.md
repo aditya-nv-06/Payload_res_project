@@ -22,5 +22,5 @@ This guide is the entry point for running `pqCheck` on each supported platform.
 - Correlation mode: enrich passive alerts with `pg_stat_activity`.
 - Training mode: build an n-gram model from a corpus.
 
-The `pqCheck` launcher forwards to the compiled `pgsql_ids` binary.
+The `pqCheck` executable is the compiled sensor binary.
 If you want to invoke it without a path prefix, place the repository root on your `PATH` or install the launcher somewhere on `PATH`.

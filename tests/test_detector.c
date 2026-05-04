@@ -216,7 +216,7 @@ static void test_risk_level(void)
 
 int main(void)
 {
-    printf("pgsql_ids unit tests\n");
+    printf("pqCheck unit tests\n");
     printf("====================\n");
 
     test_detector();

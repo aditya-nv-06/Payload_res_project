@@ -11,7 +11,7 @@ An n-gram is a short sequence of characters.
 - 2-gram: two characters at a time
 - 3-gram: three characters at a time
 
-`pgsql_ids` uses trigram scoring by default, so it looks at three-character patterns inside each SQL query.
+`pqCheck` uses trigram scoring by default, so it looks at three-character patterns inside each SQL query.
 
 ## What the corpus model means here
 

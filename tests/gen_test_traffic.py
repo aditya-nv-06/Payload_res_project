@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 tests/gen_test_traffic.py – Generate synthetic PCAP files for testing
-the pgsql_ids sensor (Milestones 1–4, 8).
+the pqCheck sensor (Milestones 1–4, 8).
 
 Requires: scapy  (pip install scapy)
 

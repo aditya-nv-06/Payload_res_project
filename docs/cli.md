@@ -1,6 +1,6 @@
-# pgsql_ids CLI Reference
+# pqCheck CLI Reference
 
-This document covers the command-line interface for `pgsql_ids`, the PostgreSQL payload fragmentation and SQLi detection sensor.
+This document covers the command-line interface for `pqCheck`, the PostgreSQL payload fragmentation and SQLi detection sensor.
 
 ## Synopsis
 
@@ -12,7 +12,7 @@ pqCheck --version
 
 ## What the CLI does
 
-`pgsql_ids` can:
+`pqCheck` can:
 
 - capture live traffic from a network interface,
 - read offline `.pcap` files,

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define PGSQL_IDS_VERSION "1.0.0"
+#define PQCHECK_VERSION "1.0.0"
 
 void cli_options_init(cli_options_t *opts)
 {
@@ -30,7 +30,7 @@ static void print_version(const char *prog)
     printf("%s v%s\n"
            "PostgreSQL Payload Fragmentation & SQLi Detection Sensor\n",
            prog,
-           PGSQL_IDS_VERSION);
+           PQCHECK_VERSION);
 }
 
 static void print_usage(const char *prog)
@@ -55,7 +55,7 @@ static void print_usage(const char *prog)
         "\n"
         "DB SESSION OPTIONS:\n"
         "  -d <connstr>   Connect to PostgreSQL and execute SQL strings\n",
-        PGSQL_IDS_VERSION, prog);
+        PQCHECK_VERSION, prog);
 
 #ifdef WITH_LIBPQ
     fprintf(stderr,

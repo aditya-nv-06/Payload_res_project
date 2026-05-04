@@ -4,7 +4,7 @@ A passive network intrusion-detection sensor for PostgreSQL (TCP/5432) written i
 
 ## Architecture
 
-`pgsql_ids` has two entry modes that share the same detection core:
+`pqCheck` has two entry modes that share the same detection core:
 
 - passive packet inspection from live capture or offline PCAP, and
 - direct PostgreSQL session mode for executing and scoring SQL statements.
@@ -62,7 +62,7 @@ make test
 make install
 ```
 
-This places `pqCheck` and the built `pgsql_ids` binary in `~/.local/bin` for a normal user install.
+This places `pqCheck` (the compiled executable) in `~/.local/bin` for a normal user install.
 If you want `sudo pqCheck` to work, run `sudo make install` so the launcher is installed into `/usr/local/bin`, which is on sudo's search path on most Linux systems.
 
 ## CLI

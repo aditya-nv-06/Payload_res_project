@@ -1,6 +1,6 @@
 # Architecture
 
-`pgsql_ids` has two entry paths that share the same detection core:
+`pqCheck` has two entry paths that share the same detection core:
 
 - passive packet inspection from a PCAP file or live interface, and
 - direct PostgreSQL session mode for executing and scoring SQL statements.

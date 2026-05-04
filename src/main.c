@@ -10,7 +10,7 @@
  *             → JSON-Lines alert log [+ PCAP dump]
  *
  * Usage:
- *   pgsql_ids [options]
+ *   pqCheck [options]
  *
  * Options:
  *   -i <iface>        Network interface to capture on (default: any)

@@ -1,4 +1,4 @@
-# Makefile – pgsql_ids: PostgreSQL payload fragmentation + SQLi detection sensor
+# Makefile – pqCheck: PostgreSQL payload fragmentation + SQLi detection sensor
 #
 # Targets:
 #   make              – build without libpq (anomaly + rule detection only)
@@ -19,7 +19,7 @@ PREFIX  ?= $(HOME)/.local
 endif
 BINDIR  ?= $(PREFIX)/bin
 
-TARGET  := pgsql_ids
+TARGET  := pqCheck
 TEST_TARGET := test_detector
 
 SRCS := src/common/util.c \
