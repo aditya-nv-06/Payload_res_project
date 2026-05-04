@@ -70,6 +70,7 @@ $(TEST_TARGET): $(TEST_SRCS)
 
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
+	bash tests/run_rules_compile_test.sh
 
 clean:
 	rm -f $(TARGET) $(TEST_TARGET) *.o
