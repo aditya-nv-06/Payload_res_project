@@ -1,11 +1,21 @@
 # Makefile – pqCheck: PostgreSQL payload fragmentation + SQLi detection sensor
 #
-# Targets:
-#   make              – build without libpq (anomaly + rule detection only)
-#   make WITH_LIBPQ=1 – build with pg_stat_activity correlation via libpq
-#   make WITH_TUI=1   – build with ncurses-based interactive TUI
-#   make test         – compile and run unit tests
-#   make clean        – remove build artefacts
+# Build Targets:
+#   make                    – build without libpq (anomaly + rule detection only)
+#   make WITH_LIBPQ=1       – build with pg_stat_activity correlation via libpq
+#   make WITH_TUI=1         – build with ncurses-based interactive TUI
+#   make test               – compile and run unit tests
+#   make clean              – remove build artefacts
+#
+# Installation:
+#   make install            – install to ~/.local (user)
+#   make install DESTDIR=/  – install to system (requires sudo)
+#   sudo make install       – system-wide installation
+#
+# Packaging:
+#   make install PREFIX=/usr DESTDIR=/tmp/pqcheck  – prepare for DEB/RPM
+#   fpm -s dir -t deb ...   – build DEB package (see packaging/)
+#   fpm -s dir -t rpm ...   – build RPM package (see packaging/)
 
 CC      := gcc
 CFLAGS  := -std=c11 -Wall -Wextra -Wpedantic -O2 -g \
@@ -13,15 +23,18 @@ CFLAGS  := -std=c11 -Wall -Wextra -Wpedantic -O2 -g \
            -Isrc
 LDFLAGS := -lpcap -lm
 
-ifeq ($(shell id -u),0)
-PREFIX  ?= /usr/local
-else
-PREFIX  ?= $(HOME)/.local
-endif
+# Installation paths (FHS compliant)
+DESTDIR ?=
+PREFIX  ?= $(if $(shell id -u),$(HOME)/.local,/usr/local)
 BINDIR  ?= $(PREFIX)/bin
+CONFDIR ?= $(PREFIX)/etc/pqcheck
+DOCDIR  ?= $(PREFIX)/share/doc/pqcheck
+DATADIR ?= $(PREFIX)/share/pqcheck
+SYSDIR  ?= $(DESTDIR)/etc/systemd/system
 
 TARGET  := pqCheck
 TEST_TARGET := test_detector
+VERSION := 1.0.0
 
 SRCS := src/common/util.c \
         src/common/net_config.c \
@@ -70,13 +83,13 @@ endif
 # Build rules                                                                 #
 # --------------------------------------------------------------------------- #
 
-.PHONY: all test clean install uninstall
+.PHONY: all test clean install uninstall info help deb rpm
 
 all: $(TARGET)
 
 $(TARGET): $(SRCS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
-	@echo "Built $@"
+	@echo "Built $@ v$(VERSION)"
 
 $(TEST_TARGET): $(TEST_SRCS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
@@ -89,19 +102,54 @@ clean:
 	rm -f $(TARGET) $(TEST_TARGET) *.o
 	@echo "Cleaned"
 
-install: $(TARGET) pqCheck
-	@mkdir -p $(BINDIR)
-	install -m 755 $(TARGET) $(BINDIR)/$(TARGET)
-	install -m 755 pqCheck $(BINDIR)/pqCheck
-	@echo "Installed to $(BINDIR)"
+install: $(TARGET)
+	@mkdir -p $(DESTDIR)$(BINDIR)
+	@mkdir -p $(DESTDIR)$(DOCDIR)
+	@mkdir -p $(DESTDIR)$(DATADIR)
+	install -m 755 $(TARGET) $(DESTDIR)$(BINDIR)/$(TARGET)
+	install -m 644 docs/*.md $(DESTDIR)$(DOCDIR)/
+	install -m 644 config/rules.conf $(DESTDIR)$(DATADIR)/rules.conf.example
+	install -m 644 config/network.conf $(DESTDIR)$(DATADIR)/network.conf.example
+	@if [ "$(DESTDIR)" = "" ] || [ "$(DESTDIR)" = "/" ]; then \
+		mkdir -p $(DESTDIR)$(CONFDIR); \
+		install -m 644 config/rules.conf $(DESTDIR)$(CONFDIR)/rules.conf; \
+		install -m 644 config/network.conf $(DESTDIR)$(CONFDIR)/network.conf.example; \
+		mkdir -p $(SYSDIR); \
+		install -m 644 packaging/pqcheck.service $(SYSDIR)/pqcheck.service 2>/dev/null || true; \
+		echo "[✓] Installed to: $(DESTDIR)$(PREFIX)"; \
+		echo "[✓] Binary: $(DESTDIR)$(BINDIR)/$(TARGET)"; \
+		echo "[✓] Config: $(DESTDIR)$(CONFDIR)/"; \
+		echo "[✓] Docs: $(DESTDIR)$(DOCDIR)/"; \
+	fi
 
 uninstall:
-	rm -f $(BINDIR)/$(TARGET) $(BINDIR)/pqCheck
-	@echo "Removed from $(BINDIR)"
+	rm -f $(DESTDIR)$(BINDIR)/$(TARGET)
+	rm -rf $(DESTDIR)$(DOCDIR)
+	rm -f $(SYSDIR)/pqcheck.service 2>/dev/null || true
+	@echo "Uninstalled from $(DESTDIR)$(PREFIX)"
 
-# Show effective build flags
 info:
-	@echo "CC      = $(CC)"
-	@echo "CFLAGS  = $(CFLAGS)"
-	@echo "LDFLAGS = $(LDFLAGS)"
-	@echo "SRCS    = $(SRCS)"
+	@echo "pqCheck v$(VERSION) Build Configuration"
+	@echo "========================================"
+	@echo "PREFIX:  $(PREFIX)"
+	@echo "BINDIR:  $(BINDIR)"
+	@echo "CONFDIR: $(CONFDIR)"
+	@echo "DOCDIR:  $(DOCDIR)"
+	@echo "DATADIR: $(DATADIR)"
+	@echo ""
+	@echo "Build flags:"
+	@echo "  WITH_LIBPQ=$(WITH_LIBPQ) (PostgreSQL correlation)"
+	@echo "  WITH_TUI=$(WITH_TUI) (Interactive dashboard)"
+	@echo ""
+	@echo "Install: make install"
+	@echo "Package: make deb OR make rpm"
+
+help:
+	@echo "Available targets:"
+	@echo "  make              - Build pqCheck"
+	@echo "  make WITH_TUI=1   - Build with TUI dashboard"
+	@echo "  make WITH_LIBPQ=1 - Build with PostgreSQL support"
+	@echo "  make test         - Run tests"
+	@echo "  make install      - Install locally (~/.local)"
+	@echo "  make clean        - Remove build artifacts"
+	@echo "  make info         - Show build configuration"

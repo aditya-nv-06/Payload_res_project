@@ -80,6 +80,25 @@ make install
 This places `pqCheck` (the compiled executable) in `~/.local/bin` for a normal user install.
 If you want `sudo pqCheck` to work, run `sudo make install` so the launcher is installed into `/usr/local/bin`, which is on sudo's search path on most Linux systems.
 
+### Advanced Installation Options
+
+For more installation options, including system-wide installation, package managers, and Docker:
+
+```bash
+# Interactive installation menu (recommended for most users):
+./install.sh
+
+# System-wide installation (requires sudo):
+sudo make install PREFIX=/usr/local
+
+# Build and install distribution packages (requires fpm):
+bash packaging/build-deb.sh    # Debian/Ubuntu .deb
+bash packaging/build-rpm.sh    # RHEL/CentOS/Fedora .rpm
+```
+
+See [BUILD.md](BUILD.md) for complete installation guide, package management, Docker setup, and troubleshooting.
+See [TESTING.md](TESTING.md) for infrastructure validation and deployment notes.
+
 ## CLI
 
 The sensor exposes a small Unix-style CLI. The fastest way to see the current

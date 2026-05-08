@@ -1,1 +1,307 @@
-/results
+# =============================================================================
+# BUILD ARTIFACTS & COMPILED BINARIES
+# =============================================================================
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+pqCheck
+test_detector
+build/
+dist/
+*.out
+
+# =============================================================================
+# DEPENDENCY & PACKAGE BUILD FILES
+# =============================================================================
+# fpm-generated packages
+*.deb
+*.rpm
+*.tar.gz
+*.tar.bz2
+staging/
+pkg/
+
+# =============================================================================
+# GENERATED TEST/DEMO FILES
+# =============================================================================
+*.pcap
+*.pcapng
+test_traffic*
+demo_*.pcap
+results/*.pcap
+!results/baseline.pcap
+!results/sqli_*.pcap
+
+# Generated PCAP files (keep tracked baselines, ignore generated ones)
+*_generated*.pcap
+*_test*.pcap
+
+# Test output and alerts
+test_alerts*.jsonl
+generated_alerts*.jsonl
+demo_alerts*.jsonl
+*.jsonl.tmp
+*.jsonl.bak
+
+# Model files (keep baseline, ignore generated)
+*.model.tmp
+*.model.bak
+*_generated*.model
+
+# =============================================================================
+# IDE & EDITOR FILES
+# =============================================================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# Vim/Neovim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+.vim/
+*.vim
+.netrwhist
+Session.vim
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# IntelliJ/JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# CLion
+cmake-build-*/
+.cmake
+CMakeLists.txt.user
+
+# Visual Studio
+.vs/
+*.suo
+*.sln.iml
+
+# =============================================================================
+# SYSTEM & OS FILES
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+desktop.ini
+.lnk
+
+# Linux
+*~
+.directory
+.~lock.*
+
+# =============================================================================
+# DEVELOPMENT & DEBUGGING
+# =============================================================================
+.gdb_history
+.lldb_history
+core
+*.core
+vgcore.*
+gmon.out
+
+# gcov coverage data
+*.gcda
+*.gcno
+*.info
+coverage/
+
+# =============================================================================
+# TEMPORARY & CACHE FILES
+# =============================================================================
+.cache/
+.tmp/
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+.DS_Store
+.tar
+.gz
+
+# =============================================================================
+# LOGS & OUTPUT
+# =============================================================================
+*.log
+logs/
+*.out
+*.err
+stderr.txt
+stdout.txt
+
+# =============================================================================
+# DATABASE RELATED
+# =============================================================================
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+.pgpass
+.pgpassfile
+pgsql_ids.local
+
+# =============================================================================
+# CONFIGURATION & SECRETS (PATTERN-BASED)
+# =============================================================================
+# Local config overrides (keep tracked defaults)
+config/rules.conf.local
+config/rules.conf.bak
+*.conf.local
+*.conf.bak
+
+# Environment files with potential secrets
+.env
+.env.local
+.env.*.local
+.env.production.local
+.env.test.local
+
+# SSH keys
+*.pem
+*.key
+!example.pem
+!example.key
+
+# =============================================================================
+# DOCKER & CONTAINER RELATED
+# =============================================================================
+.dockerignore
+docker-compose.override.yml
+.docker/
+docker-volume/
+
+# =============================================================================
+# CI/CD ARTIFACTS
+# =============================================================================
+.github/workflows/*.log
+.gitlab-ci-local/
+.circleci/tmp/
+build-output/
+ci-artifacts/
+
+# =============================================================================
+# PYTHON RELATED (for gen_test_traffic.py or other helper scripts)
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+ENV/
+env/
+
+# =============================================================================
+# NODE/NPM RELATED (if any frontend/docs use node)
+# =============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# =============================================================================
+# RUST RELATED (if any Rust code added)
+# =============================================================================
+target/
+Cargo.lock
+
+# =============================================================================
+# DOCUMENTATION GENERATED FILES
+# =============================================================================
+docs/_build/
+docs/.doctrees/
+site/
+*.pdf.tmp
+
+# =============================================================================
+# PERFORMANCE & PROFILING
+# =============================================================================
+perf.data
+perf.data.old
+callgrind.out.*
+cachegrind.out.*
+
+# =============================================================================
+# PROJECT-SPECIFIC IGNORES
+# =============================================================================
+# Local/development PCAP files (not in results/)
+local_*.pcap
+dev_*.pcap
+*.pcap.orig
+
+# Local test database connections
+.pqcheck.local
+.pqcheck.testing
+
+# Installation staging areas
+install-staging/
+staging-deb/
+staging-rpm/
+
+# Package build intermediates
+fpm-build/
+fpm-pkg/
+
+# Local rules/config testing
+config/rules.conf.dev
+rules.test.conf
+
+# Temporary network captures
+capture_*.pcap
+live_capture_*.pcap
+
+# =============================================================================
+# WHITELIST - FORCE INCLUDE IMPORTANT FILES
+# =============================================================================
+!.gitkeep
+!.github/
+!docs/
+!config/rules.conf
+!results/baseline.pcap
+!results/baseline.model
+!results/sqli_classic.pcap
+!results/sqli_fragmented.pcap
+!results/sqli_obfuscated.pcap
