@@ -102,6 +102,7 @@ endif
 # --------------------------------------------------------------------------- #
 
 .PHONY: all test clean install uninstall info help deb rpm audit audit-test
+.PHONY: audit-pg audit-ci
 
 all: $(TARGET)
 
@@ -124,6 +125,9 @@ audit:
 audit-pg:
 	@echo "Running PostgreSQL system audit using PQ_CONNSTR or env PG* vars"
 	@./pqCheck --audit -c "$$PG_CONNSTR"
+
+audit-ci:
+	@bash tools/audit_ci.sh
 
 audit-test:
 	python3 -m unittest tests/test_pqcheck_audit.py

@@ -1,16 +1,14 @@
-name: pqCheck Release
+name: pqCheck Pre-Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - "release/**"
+  workflow_dispatch:
 
 jobs:
   changelog:
     runs-on: ubuntu-latest
-
-    outputs:
-      changelog_path: ${{ steps.write.outputs.changelog_path }}
 
     steps:
       - name: Checkout
@@ -19,30 +17,27 @@ jobs:
           fetch-depth: 0
 
       - name: Generate changelog
-        id: write
         run: |
           mkdir -p dist
-          CURRENT_TAG="${GITHUB_REF_NAME}"
-          PREV_TAG="$(git tag --sort=-creatordate | grep -vx "$CURRENT_TAG" | head -n 1 || true)"
+          LAST_TAG="$(git tag --sort=-creatordate | head -n 1 || true)"
+          CURRENT_REF="${GITHUB_REF_NAME}"
 
           {
-            echo "# pqCheck ${CURRENT_TAG}"
+            echo "# pqCheck pre-release ${CURRENT_REF}"
             echo
-            if [ -n "$PREV_TAG" ]; then
-              echo "## Changes since ${PREV_TAG}"
-              git log --no-merges --pretty=format:'- %s (%h)' "${PREV_TAG}..${CURRENT_TAG}"
+            if [ -n "$LAST_TAG" ]; then
+              echo "## Changes since ${LAST_TAG}"
+              git log --no-merges --pretty=format:'- %s (%h)' "${LAST_TAG}..HEAD"
             else
-              echo "## Changes in this release"
-              git log --no-merges --pretty=format:'- %s (%h)' "${CURRENT_TAG}^..${CURRENT_TAG}" || true
+              echo "## Recent changes"
+              git log -n 20 --no-merges --pretty=format:'- %s (%h)'
             fi
           } > dist/CHANGELOG.md
-
-          echo "changelog_path=dist/CHANGELOG.md" >> "$GITHUB_OUTPUT"
 
       - name: Upload changelog artifact
         uses: actions/upload-artifact@v4
         with:
-          name: changelog
+          name: prerelease-changelog
           path: dist/CHANGELOG.md
 
   source-archive:
@@ -64,7 +59,7 @@ jobs:
       - name: Upload source artifact
         uses: actions/upload-artifact@v4
         with:
-          name: source-archive
+          name: prerelease-source-archive
           path: dist/pqCheck-source.tar.gz
 
   packages:
@@ -74,11 +69,11 @@ jobs:
         include:
           - format: deb
             script: packaging/build-deb.sh
-            artifact_name: pqcheck-deb
+            artifact_name: prerelease-pqcheck-deb
             package_glob: pqcheck_1.0.0_amd64.deb
           - format: rpm
             script: packaging/build-rpm.sh
-            artifact_name: pqcheck-rpm
+            artifact_name: prerelease-pqcheck-rpm
             package_glob: pqcheck-1.0.0-1.x86_64.rpm
 
     steps:
@@ -103,7 +98,7 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.package_glob }}
 
-  publish-release:
+  publish-prerelease:
     runs-on: ubuntu-latest
     needs:
       - changelog
@@ -116,24 +111,22 @@ jobs:
         with:
           path: dist/artifacts
 
-      - name: List release artifacts
-        run: |
-          find dist/artifacts -maxdepth 2 -type f | sort
-
-      - name: Write release notes
+      - name: Prepare release notes
         run: |
           mkdir -p dist
-          cp dist/artifacts/changelog/CHANGELOG.md dist/RELEASE_NOTES.md
+          cp dist/artifacts/prerelease-changelog/CHANGELOG.md dist/RELEASE_NOTES.md
 
-      - name: Upload release assets
+      - name: Publish draft pre-release
         uses: softprops/action-gh-release@v2
         with:
-          draft: false
-          prerelease: false
-          files: |
-            dist/artifacts/source-archive/pqCheck-source.tar.gz
-            dist/artifacts/pqcheck-deb/pqcheck_1.0.0_amd64.deb
-            dist/artifacts/pqcheck-rpm/pqcheck-1.0.0-1.x86_64.rpm
+          tag_name: pre-${{ github.ref_name }}-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          draft: true
+          prerelease: true
           body_path: dist/RELEASE_NOTES.md
+          files: |
+            dist/artifacts/prerelease-source-archive/pqCheck-source.tar.gz
+            dist/artifacts/prerelease-pqcheck-deb/pqcheck_1.0.0_amd64.deb
+            dist/artifacts/prerelease-pqcheck-rpm/pqcheck-1.0.0-1.x86_64.rpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
