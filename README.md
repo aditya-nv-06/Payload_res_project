@@ -49,6 +49,27 @@ sudo apt-get install -y libpq-dev
 sudo apt-get install -y libncurses-dev
 ```
 
+# System PostgreSQL audit (native C)
+
+If you build with `WITH_LIBPQ=1`, `pqCheck` provides a native system-level
+PostgreSQL audit mode implemented in C that connects to the server (via
+libpq) and runs a set of operational and security checks across databases,
+roles and configuration settings. Use `-c` to pass a libpq connection string
+or rely on `PGHOST`/`PGUSER` environment variables.
+
+Example:
+
+```bash
+make WITH_LIBPQ=1
+./pqCheck --audit -c "host=127.0.0.1 user=postgres" --audit-json results/pg-audit.json
+```
+
+There is also a Makefile helper that reads `PG_CONNSTR`:
+
+```bash
+make audit-pg PG_CONNSTR="host=127.0.0.1 user=postgres"
+```
+
 ### Compile
 
 ```bash
@@ -123,6 +144,37 @@ pqCheck -A test_traffic.pcap -r test_traffic.pcap \
 cat alerts.jsonl | jq .
 ```
 
+### Security audit CLI (Python)
+
+Run the repository/database security audit scanner:
+
+```bash
+# Static scan of repo code/config/scripts
+python3 tools/pqcheck_audit.py --root .
+
+# Include docs too (higher noise, broader coverage)
+python3 tools/pqcheck_audit.py --root . --include-docs
+
+# Or via Makefile
+make audit
+
+# Optional live checks using a libpq connection string
+python3 tools/pqcheck_audit.py \
+  --root . \
+  --connstr "host=localhost port=5432 dbname=postgres user=postgres sslmode=require" \
+  --check-port 127.0.0.1:5432 \
+  --json-out results/security-audit.json
+```
+
+What it checks:
+
+- parameterized vs raw SQL usage patterns in C/Python
+- connection-string transport security (`sslmode` usage)
+- dangerous PostgreSQL commands (e.g., superuser/escalation patterns)
+- broad privilege grants
+- possible network exposure patterns (`0.0.0.0/0`, `listen_addresses='*'`, port publishing)
+- optional live DB checks (`SHOW server_version`, `SHOW ssl`, current user/superuser)
+
 **For production environments:**
 
 ```bash
@@ -135,6 +187,9 @@ pqCheck --tui -r capture.pcap -R config/rules.conf -m baseline.model
 # Train an n-gram model from a SQL corpus
 pqCheck -t corpus.sql -m baseline.model
 
+# Live capture to a pcap, then auto-train and detect in one step
+sudo pqCheck --capture --capture-out results/live_capture.pcap --duration 30
+
 # Live capture on an interface (usually requires sudo or CAP_NET_RAW)
 sudo pqCheck -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl -v
 ```
@@ -144,7 +199,7 @@ sudo pqCheck -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl -v
 You can auto-train an in-memory n-gram model from a PCAP and then run detection. Example:
 
 ```bash
-pqCheck -A train.pcap -r monitor.pcap -R config/rules.conf -o alerts.jsonl -v
+pqCheck -A train.pcap --pcap monitor.pcap -R config/rules.conf -o alerts.jsonl -v
 ```
 
 Production note: offline PCAP files may be used in production workflows — supply them with `-r <file>` for detection, or use `-A <file>` to train a temporary model from historical traffic before running detection.

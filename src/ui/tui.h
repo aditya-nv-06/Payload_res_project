@@ -65,10 +65,18 @@ typedef struct {
 #define TUI_SCREEN_ALERTS    1
 #define TUI_SCREEN_CONFIG    2
 #define TUI_SCREEN_HELP      3
+#define TUI_SCREEN_AUDIT     4
     int current_screen;
     
     /* Statistics */
     tui_stats_t stats;
+
+    /* Audit summary (used by --tui --audit mode) */
+    uint64_t audit_files_scanned;
+    uint64_t audit_total_findings;
+    uint64_t audit_high;
+    uint64_t audit_medium;
+    uint64_t audit_low;
 } tui_ctx_t;
 
 /* ====================================================================== */

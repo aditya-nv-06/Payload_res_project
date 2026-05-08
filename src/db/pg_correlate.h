@@ -30,7 +30,7 @@ typedef struct pg_correlate_ctx pg_correlate_ctx_t;
 
 /*
  * Connect to PostgreSQL with the given connection string.
- * connstr: libpq connection string, e.g. "host=localhost dbname=postgres"
+ * connstr: libpq connection string, e.g. "host=localhost dbname=postgres sslmode=require"
  * Returns NULL on failure.
  */
 pg_correlate_ctx_t *pg_correlate_open(const char *connstr);

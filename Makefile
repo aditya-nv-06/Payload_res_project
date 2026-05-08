@@ -23,6 +23,10 @@ CFLAGS  := -std=c11 -Wall -Wextra -Wpedantic -O2 -g \
            -Isrc
 LDFLAGS := -lpcap -lm
 
+# Build with libpq by default. Override with `make WITH_LIBPQ=0` if you don't
+# want PostgreSQL client linkage in the default build.
+WITH_LIBPQ ?= 1
+
 # Installation paths (FHS compliant)
 DESTDIR ?=
 PREFIX  ?= $(if $(shell id -u),$(HOME)/.local,/usr/local)
@@ -34,17 +38,21 @@ SYSDIR  ?= $(DESTDIR)/etc/systemd/system
 
 TARGET  := pqCheck
 TEST_TARGET := test_detector
+TEST_VALID := db_validation_test
 VERSION := 1.0.0
 
 SRCS := src/common/util.c \
+	src/common/logger.c \
         src/common/net_config.c \
         src/common/pcap_gen.c \
         src/app/cli.c     \
+	src/app/cli_help.c \
         src/net/capture.c \
         src/net/reassembly.c \
         src/net/pg_parser.c \
         src/net/packet_parse.c \
         src/analysis/detector.c \
+		src/analysis/audit.c \
         src/analysis/ngram.c \
         src/analysis/query_eval.c \
         src/db/db_session.c \
@@ -59,6 +67,16 @@ TEST_SRCS := tests/test_detector.c \
              src/output/alert.c     \
              src/db/pg_correlate.c  \
              src/net/reassembly.c
+
+TEST_VALID_SRCS := tests/db_validation_test.c \
+				   src/analysis/detector.c \
+				   src/analysis/ngram.c   \
+				   src/analysis/query_eval.c \
+				   src/output/alert.c \
+				   src/net/reassembly.c \
+				   src/db/db_session.c \
+				   src/common/logger.c \
+				   src/common/util.c
 
 # --------------------------------------------------------------------------- #
 # Optional libpq support                                                      #
@@ -83,7 +101,7 @@ endif
 # Build rules                                                                 #
 # --------------------------------------------------------------------------- #
 
-.PHONY: all test clean install uninstall info help deb rpm
+.PHONY: all test clean install uninstall info help deb rpm audit audit-test
 
 all: $(TARGET)
 
@@ -94,9 +112,24 @@ $(TARGET): $(SRCS)
 $(TEST_TARGET): $(TEST_SRCS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-test: $(TEST_TARGET)
+
+test: $(TEST_TARGET) $(TEST_VALID)
 	./$(TEST_TARGET)
+	./$(TEST_VALID)
 	bash tests/run_rules_compile_test.sh
+
+audit:
+	python3 tools/pqcheck_audit.py --root .
+
+audit-pg:
+	@echo "Running PostgreSQL system audit using PQ_CONNSTR or env PG* vars"
+	@./pqCheck --audit -c "$$PG_CONNSTR"
+
+audit-test:
+	python3 -m unittest tests/test_pqcheck_audit.py
+
+$(TEST_VALID): $(TEST_VALID_SRCS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -f $(TARGET) $(TEST_TARGET) *.o
@@ -150,6 +183,9 @@ help:
 	@echo "  make WITH_TUI=1   - Build with TUI dashboard"
 	@echo "  make WITH_LIBPQ=1 - Build with PostgreSQL support"
 	@echo "  make test         - Run tests"
+	@echo "  make audit        - Run Python DB security audit"
+	@echo "  make audit-pg     - Run native PostgreSQL system audit (requires WITH_LIBPQ build)"
+	@echo "  make audit-test   - Run audit CLI unit tests"
 	@echo "  make install      - Install locally (~/.local)"
 	@echo "  make clean        - Remove build artifacts"
 	@echo "  make info         - Show build configuration"

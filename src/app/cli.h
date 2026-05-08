@@ -4,6 +4,7 @@
 typedef struct {
     const char *iface;
     const char *pcap_file;
+    const char *capture_pcap;
     const char *bpf_extra;
     const char *rules_path;
     const char *alert_path;
@@ -14,6 +15,13 @@ typedef struct {
     const char *net_config_path; /* Network config (ports, IPs, output_path) */
     const char *pg_connstr;
     const char *db_connstr;
+    const char *audit_root;
+    const char *audit_json_out;
+    int         capture_mode;
+    int         capture_seconds;
+    int         audit_mode;
+    int         audit_include_docs;
+    int         audit_pg_only; /* Explicit system-level Postgres audit */
 #ifdef WITH_LIBPQ
     const char *db_sql;
 #endif

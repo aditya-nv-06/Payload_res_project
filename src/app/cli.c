@@ -5,12 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define PQCHECK_VERSION "1.0.0"
+#include "app/cli_help.h"
 
 void cli_options_init(cli_options_t *opts)
 {
     opts->iface       = "any";
     opts->pcap_file   = NULL;
+    opts->capture_pcap = NULL;
     opts->bpf_extra   = NULL;
     opts->rules_path  = "config/rules.conf";
     opts->alert_path  = "alerts.jsonl";
@@ -21,6 +22,13 @@ void cli_options_init(cli_options_t *opts)
     opts->net_config_path = NULL;
     opts->pg_connstr  = NULL;
     opts->db_connstr  = NULL;
+    opts->audit_root  = ".";
+    opts->audit_json_out = NULL;
+    opts->capture_mode = 0;
+    opts->capture_seconds = 30;
+    opts->audit_mode = 0;
+    opts->audit_include_docs = 0;
+    opts->audit_pg_only = 0;
 #ifdef WITH_LIBPQ
     opts->db_sql      = NULL;
 #endif
@@ -33,115 +41,20 @@ void cli_options_init(cli_options_t *opts)
     opts->verbose     = 0;
 }
 
-static void print_version(const char *prog)
-{
-    printf("%s v%s\n"
-           "PostgreSQL Payload Fragmentation & SQLi Detection Sensor\n",
-           prog,
-           PQCHECK_VERSION);
-}
-
-static void print_usage(const char *prog)
-{
-    {
-        /* Print a nicely aligned Unicode box header with the program title */
-        const int inner_width = 60;
-        char title[128];
-        snprintf(title, sizeof(title), "PostgreSQL IDS - SQLi Detection Sensor v%s", PQCHECK_VERSION);
-        int tlen = (int)strlen(title);
-        int left = 0, right = 0;
-        if (tlen < inner_width) {
-            left = (inner_width - tlen) / 2;
-            right = inner_width - tlen - left;
-        }
-
-        fprintf(stderr, "\n  ╔");
-        for (int i = 0; i < inner_width; i++) fputs("═", stderr);
-        fprintf(stderr, "╗\n  ║");
-        for (int i = 0; i < left; i++) fputc(' ', stderr);
-        fprintf(stderr, "%s", title);
-        for (int i = 0; i < right; i++) fputc(' ', stderr);
-        fprintf(stderr, "║\n  ╚");
-        for (int i = 0; i < inner_width; i++) fputs("═", stderr);
-        fprintf(stderr, "╝\n\n");
-
-        fprintf(stderr, "Usage: %s [options]\n\n", prog);
-
-        fprintf(stderr,
-            "  -i <iface>     Live capture interface (default: any)\n"
-            "  -r <file>      Read from offline PCAP file\n"
-            "  -f <bpf>       Extra BPF filter (AND-ed with tcp port 5432)\n"
-            "\n"
-            "ANALYSIS OPTIONS:\n"
-            "  -R <rules>     Rules config file (default: config/rules.conf)\n"
-                "  -m <model>     N-gram model file (enables anomaly scoring)\n"
-                "  -A <pcap>      Extract queries from PCAP and auto-train model\n"
-            "  -T <thresh>    Anomaly threshold (default: -5.0)\n"
-            "\n"
-            "NETWORK CONFIG (alternative to CLI flags):\n"
-            "  -N <config>    Network config file (ports, IPs, output_path)\n"
-            "\n"
-            "DB SESSION OPTIONS:\n"
-            "  -d <connstr>   Connect to PostgreSQL and execute SQL strings\n"
-        );
-
-#ifdef WITH_LIBPQ
-    fprintf(stderr,
-        "  -e <sql>       Execute one SQL statement in -d mode, then exit\n");
-#endif
-
-    fprintf(stderr,
-        "\n"
-        "OUTPUT OPTIONS:\n"
-        "  -o <file>      Alert log file (default: alerts.jsonl)\n"
-        "  -p <file>      Dump flagged packets to PCAP file\n"
-        "\n"
-        "TRAINING:\n"
-        "  -t <corpus>    Train n-gram model from corpus (requires -m)\n"
-        "  --gen-test     Generate synthetic test PCAP (use with -o to save)\n"
-        "  --gen-clean N  Number of clean queries (default: 50)\n"
-        "  --gen-inject N Number of injection queries (default: 50)\n"
-        "\n"
-        "DATABASE OPTIONS:\n"
-        "  -c <connstr>   libpq connection string for pg_stat_activity\n"
-        "\n"
-        "OTHER:\n"
-        "  -v             Verbose output to stderr\n"
-        "  --tui          Enable interactive TUI mode (requires ncurses)\n"
-        "  --version      Show version information\n"
-        "  -h, --help     Show this help message\n"
-        "\n"
-        "EXAMPLES:\n"
-        "  # Live capture on eth0 with verbose output\n"
-        "  %s -i eth0 -R config/rules.conf -v\n"
-        "\n"
-        "  # Analyze offline PCAP file\n"
-        "  %s -r capture.pcap -R config/rules.conf -o alerts.jsonl\n"
-        "\n"
-        "  # Train anomaly model from SQL corpus\n"
-        "  %s -t corpus.sql -m model.ngram -v\n"
-        "\n"
-        "  # Advanced: anomaly + rule detection + packet dump\n"
-        "  %s -r pcap.file -m model.ngram -p flagged.pcap -o alerts.jsonl\n"
-        "\n"
-        "  # Monitor custom PostgreSQL ports/IPs via network config\n"
-        "  %s -r capture.pcap -N config/network.conf -o alerts.jsonl\n"
-        "\n"
-        "  # Connect to a database and evaluate each entered SQL statement\n"
-        "  %s -d \"host=localhost dbname=postgres user=postgres\" -v\n"
-        "\n"
-        "  # Execute a single SQL statement in database session mode\n"
-        "  %s -d \"host=localhost dbname=postgres user=postgres\" -e \"SELECT 1\"\n"
-        "\n",
-        prog, prog, prog, prog, prog, prog, prog);
-        }
-}
-
 int cli_parse(int argc, char **argv, cli_options_t *opts, const char *prog)
 {
     struct option long_opts[] = {
         {"help",    no_argument,       NULL, 'h'},
         {"version", no_argument,       NULL,  1 },
+        {"capture", no_argument,       NULL,  6 },
+        {"pcap",    required_argument,  NULL,  'r' },
+        {"capture-out", required_argument, NULL,  7 },
+        {"duration", required_argument, NULL,  8 },
+        {"audit", no_argument, NULL, 9 },
+        {"audit-root", required_argument, NULL, 10 },
+        {"audit-json", required_argument, NULL, 11 },
+        {"audit-include-docs", no_argument, NULL, 12 },
+        {"audit-pg", no_argument, NULL, 13 },
         {"auto",    required_argument, NULL,  'A' },
         {"net-config", required_argument, NULL, 'N'},
         {"tui",     no_argument,       NULL,  2 },
@@ -165,6 +78,14 @@ int cli_parse(int argc, char **argv, cli_options_t *opts, const char *prog)
         case 't': opts->corpus_path = optarg; break;
         case 'A': opts->auto_pcap    = optarg; break;
         case 'N': opts->net_config_path = optarg; break;
+        case 6:   opts->capture_mode = 1; break; /* --capture */
+        case 7:   opts->capture_pcap = optarg; break; /* --capture-out */
+        case 8:   opts->capture_seconds = atoi(optarg); break; /* --duration */
+        case 9:   opts->audit_mode = 1; break; /* --audit */
+        case 10:  opts->audit_root = optarg; opts->audit_mode = 1; break; /* --audit-root */
+        case 11:  opts->audit_json_out = optarg; opts->audit_mode = 1; break; /* --audit-json */
+        case 12:  opts->audit_include_docs = 1; opts->audit_mode = 1; break; /* --audit-include-docs */
+        case 13:  opts->audit_mode = 1; opts->audit_pg_only = 1; break; /* --audit-pg */
         case 2:   opts->tui_mode    = 1; break;          /* --tui */
         case 3:   opts->gen_test_output = 1; break;      /* --gen-test */
         case 4:   opts->gen_test_clean_count = atoi(optarg); break; /* --gen-clean */
@@ -183,10 +104,10 @@ int cli_parse(int argc, char **argv, cli_options_t *opts, const char *prog)
 #endif
         case 'v': opts->verbose     = 1; break;
         case 'h':
-            print_usage(prog);
+            cli_print_usage(prog);
             return 1;
         case 1:
-            print_version(prog);
+            cli_print_version(prog);
             return 1;
         case '?':
         default:

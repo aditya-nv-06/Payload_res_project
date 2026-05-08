@@ -61,6 +61,12 @@ int capture_datalink(capture_ctx_t *ctx);
  */
 void capture_loop(capture_ctx_t *ctx, packet_cb_t cb, void *user);
 
+/* Capture live traffic into a pcap file for a fixed duration. */
+int capture_live_to_pcap(const char *iface,
+                         const char *bpf_extra,
+                         const char *out_path,
+                         int duration_seconds);
+
 /* Free resources. */
 void capture_close(capture_ctx_t *ctx);
 

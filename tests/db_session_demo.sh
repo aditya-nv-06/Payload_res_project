@@ -11,6 +11,6 @@ PQ="${SCRIPT_DIR}/../pqCheck"
 echo "Running DB-session demo using ${PQ}"
 
 printf "SELECT ' UNION SELECT username, password FROM pg_shadow--';\nSELECT ' OR 1=1--';\nSELECT '1; DROP TABLE users--';\n\\disconnect\n" \
-  | "$PQ" -d "host=localhost dbname=postgres user=postgres" -m baseline.model -o db-alerts.jsonl -v
+  | "$PQ" -d "host=localhost dbname=postgres user=postgres sslmode=require" -m baseline.model -o db-alerts.jsonl -v
 
 echo "Wrote alerts to db-alerts.jsonl"

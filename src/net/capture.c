@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <time.h>
 
 #define SNAPLEN      65535
 #define PROMISC      1
@@ -211,6 +212,73 @@ void capture_loop(capture_ctx_t *ctx, packet_cb_t cb, void *user)
         fprintf(stderr, "[capture] pcap_loop error: %s\n",
                 pcap_geterr(ctx->handle));
     /* ret == -2 means pcap_breakloop was called (SIGINT) – normal exit */
+}
+
+typedef struct {
+    pcap_dumper_t *dumper;
+} capture_dump_ctx_t;
+
+static void dump_all_packets(u_char *user,
+                             const struct pcap_pkthdr *hdr,
+                             const uint8_t *pkt)
+{
+    capture_dump_ctx_t *ctx = (capture_dump_ctx_t *)user;
+    if (ctx && ctx->dumper && hdr && pkt)
+        pcap_dump((u_char *)ctx->dumper, hdr, pkt);
+}
+
+int capture_live_to_pcap(const char *iface,
+                         const char *bpf_extra,
+                         const char *out_path,
+                         int duration_seconds)
+{
+    if (!out_path || !out_path[0]) {
+        fprintf(stderr, "[capture] output pcap path cannot be empty\n");
+        return -1;
+    }
+    if (duration_seconds <= 0) {
+        fprintf(stderr, "[capture] duration must be greater than zero\n");
+        return -1;
+    }
+
+    capture_ctx_t *cap = capture_open_live(iface, bpf_extra);
+    if (!cap)
+        return -1;
+
+    pcap_t *pcap_handle = capture_pcap(cap);
+    pcap_dumper_t *dumper = pcap_dump_open(pcap_handle, out_path);
+    if (!dumper) {
+        fprintf(stderr, "[capture] pcap_dump_open(%s) failed: %s\n",
+                out_path, pcap_geterr(pcap_handle));
+        capture_close(cap);
+        return -1;
+    }
+
+    fprintf(stderr, "[capture] recording live traffic from %s to %s for %d second(s)\n",
+            iface, out_path, duration_seconds);
+
+    capture_dump_ctx_t dump_ctx = { .dumper = dumper };
+    time_t end_time = time(NULL) + duration_seconds;
+
+    while (time(NULL) < end_time) {
+        int ret = pcap_dispatch(pcap_handle, 100,
+                                (pcap_handler)dump_all_packets,
+                                (u_char *)&dump_ctx);
+        if (ret == PCAP_ERROR) {
+            fprintf(stderr, "[capture] pcap_dispatch error: %s\n",
+                    pcap_geterr(pcap_handle));
+            pcap_dump_close(dumper);
+            capture_close(cap);
+            return -1;
+        }
+    }
+
+    pcap_dump_flush(dumper);
+    pcap_dump_close(dumper);
+    capture_close(cap);
+
+    fprintf(stderr, "[capture] live capture written to %s\n", out_path);
+    return 0;
 }
 
 void capture_close(capture_ctx_t *ctx)

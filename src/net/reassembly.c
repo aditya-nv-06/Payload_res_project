@@ -10,6 +10,16 @@
 #include <string.h>
 #include <stdio.h>
 
+#ifndef TH_FIN
+#define TH_FIN 0x01
+#endif
+#ifndef TH_SYN
+#define TH_SYN 0x02
+#endif
+#ifndef TH_RST
+#define TH_RST 0x04
+#endif
+
 /* -------------------------------------------------------------------------- */
 /* Internal helpers                                                           */
 /* -------------------------------------------------------------------------- */

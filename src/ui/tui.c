@@ -63,7 +63,7 @@ static void render_dashboard(tui_ctx_t *tui)
     /* Footer */
     attron(A_REVERSE);
     mvprintw(tui->max_rows - 1, 0, "%-*s", tui->max_cols,
-             " [a] Alerts  [c] Config  [h] Help  [q] Quit");
+             " [a] Alerts  [c] Config  [u] Audit  [h] Help  [q] Quit");
     attroff(A_REVERSE);
     
     refresh();
@@ -146,7 +146,7 @@ static void render_config(tui_ctx_t *tui)
     /* Footer */
     attron(A_REVERSE);
     mvprintw(tui->max_rows - 1, 0, "%-*s", tui->max_cols,
-             " [d] Dashboard  [a] Alerts  [h] Help  [q] Quit");
+             " [d] Dashboard  [a] Alerts  [u] Audit  [h] Help  [q] Quit");
     attroff(A_REVERSE);
     
     refresh();
@@ -169,6 +169,7 @@ static void render_help(tui_ctx_t *tui)
     mvprintw(row++, 8, "[d] - Go to Dashboard");
     mvprintw(row++, 8, "[a] - Go to Alert Log");
     mvprintw(row++, 8, "[c] - Go to Configuration");
+    mvprintw(row++, 8, "[u] - Go to Audit Summary");
     mvprintw(row++, 8, "[h] - Show this Help screen");
     
     row++;
@@ -192,6 +193,48 @@ static void render_help(tui_ctx_t *tui)
              " Press any key to return to Dashboard");
     attroff(A_REVERSE);
     
+    refresh();
+}
+
+static void render_audit(tui_ctx_t *tui)
+{
+    if (!tui) return;
+
+    clear();
+
+    attron(A_BOLD | A_REVERSE);
+    mvprintw(0, 0, "%-*s", tui->max_cols, " Audit Summary");
+    attroff(A_BOLD | A_REVERSE);
+
+    attron(A_BOLD);
+    mvprintw(2, 2, "Repository Security Audit Results");
+    attroff(A_BOLD);
+
+    mvprintw(4, 4, "Files Scanned:     %llu", (unsigned long long)tui->audit_files_scanned);
+    mvprintw(5, 4, "Total Findings:    %llu", (unsigned long long)tui->audit_total_findings);
+    mvprintw(7, 4, "High Severity:     %llu", (unsigned long long)tui->audit_high);
+    mvprintw(8, 4, "Medium Severity:   %llu", (unsigned long long)tui->audit_medium);
+    mvprintw(9, 4, "Low Severity:      %llu", (unsigned long long)tui->audit_low);
+
+    if (tui->audit_high > 0) {
+        attron(A_BOLD | COLOR_PAIR(1));
+        mvprintw(11, 4, "Status: BLOCKER - high severity findings detected");
+        attroff(A_BOLD | COLOR_PAIR(1));
+    } else if (tui->audit_medium > 0) {
+        attron(COLOR_PAIR(2));
+        mvprintw(11, 4, "Status: REVIEW - medium severity findings need triage");
+        attroff(COLOR_PAIR(2));
+    } else {
+        attron(COLOR_PAIR(4));
+        mvprintw(11, 4, "Status: PASS - no high/medium findings");
+        attroff(COLOR_PAIR(4));
+    }
+
+    attron(A_REVERSE);
+    mvprintw(tui->max_rows - 1, 0, "%-*s", tui->max_cols,
+             " [d] Dashboard  [h] Help  [q] Quit");
+    attroff(A_REVERSE);
+
     refresh();
 }
 
@@ -255,6 +298,9 @@ int tui_run(tui_ctx_t *tui)
         case TUI_SCREEN_HELP:
             render_help(tui);
             break;
+        case TUI_SCREEN_AUDIT:
+            render_audit(tui);
+            break;
         }
         
         /* Handle input */
@@ -275,6 +321,10 @@ int tui_run(tui_ctx_t *tui)
         case 'h':
         case 'H':
             tui->current_screen = TUI_SCREEN_HELP;
+            break;
+        case 'u':
+        case 'U':
+            tui->current_screen = TUI_SCREEN_AUDIT;
             break;
         case 'q':
         case 'Q':

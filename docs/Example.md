@@ -208,7 +208,7 @@ Use this when you want to bootstrap an n-gram model from clean traffic in one PC
 ```bash
 pqCheck \
   -A results/baseline.pcap \
-  -r results/sqli_obfuscated.pcap \
+  --pcap results/sqli_obfuscated.pcap \
   -R config/rules.conf \
   -o alerts.jsonl \
   -v

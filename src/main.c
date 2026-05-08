@@ -41,10 +41,12 @@
 
 #include "common/util.h"
 #include "app/cli.h"
+#include "common/logger.h"
 #include "net/capture.h"
 #include "net/reassembly.h"
 #include "net/pg_parser.h"
 #include "analysis/detector.h"
+#include "analysis/audit.h"
 #include "analysis/ngram.h"
 #include "net/packet_parse.h"
 #include "analysis/query_eval.h"
@@ -214,6 +216,83 @@ int main(int argc, char *argv[])
     int         verbose     = cli.verbose;
     int         tui_mode    = cli.tui_mode;
 
+    if (cli.audit_mode) {
+        audit_report_t report;
+#ifdef WITH_LIBPQ
+        /* Prefer PostgreSQL system-level audit when built with libpq. If a
+         * connection string is provided via -c/--pg-conn use it, otherwise
+         * attempt to connect to localhost using libpq defaults. */
+        int rc = audit_run_postgres(cli.pg_connstr, cli.audit_json_out, &report, stdout);
+#else
+        int rc = audit_run(cli.audit_root,
+                           cli.audit_include_docs,
+                           cli.audit_json_out,
+                           &report,
+                           stdout);
+#endif
+
+#ifdef WITH_TUI
+        if (tui_mode) {
+            tui_ctx_t tui;
+            if (tui_init(&tui) == 0) {
+                tui.current_screen = TUI_SCREEN_AUDIT;
+                tui.stats.capture_active = 0;
+                tui.stats.rules_loaded = 0;
+                tui.stats.ngram_loaded = 0;
+                tui.stats.total_queries = report.total_files_scanned;
+                tui.stats.total_alerts = report.total_findings;
+                tui.stats.rule_alerts = report.high_count;
+                tui.stats.anomaly_alerts = report.medium_count + report.low_count;
+                tui.audit_files_scanned = report.total_files_scanned;
+                tui.audit_total_findings = report.total_findings;
+                tui.audit_high = report.high_count;
+                tui.audit_medium = report.medium_count;
+                tui.audit_low = report.low_count;
+                tui_run(&tui);
+                tui_cleanup(&tui);
+            }
+        }
+#else
+        if (tui_mode) {
+            fprintf(stderr, "[ERROR] TUI mode (--tui) requires ncurses support\n");
+            fprintf(stderr, "[ERROR] Rebuild with: make WITH_TUI=1\n");
+            return 1;
+        }
+#endif
+
+        return rc;
+    }
+
+    char capture_path_buf[256];
+    memset(capture_path_buf, 0, sizeof(capture_path_buf));
+
+    if (cli.capture_mode) {
+        if (pcap_file) {
+            fprintf(stderr, "[ERROR] --capture cannot be combined with -r/--pcap input\n");
+            return 1;
+        }
+
+        if (cli.capture_seconds <= 0) {
+            fprintf(stderr, "[ERROR] --duration must be greater than zero\n");
+            return 1;
+        }
+
+        if (cli.capture_pcap && cli.capture_pcap[0]) {
+            pcap_file = cli.capture_pcap;
+        } else {
+            snprintf(capture_path_buf, sizeof(capture_path_buf),
+                     "/tmp/pqcheck_capture_%ld_%ld.pcap",
+                     (long)time(NULL), (long)getpid());
+            pcap_file = capture_path_buf;
+        }
+
+        if (capture_live_to_pcap(iface, bpf_extra, pcap_file, cli.capture_seconds) < 0)
+            return 1;
+
+        cli.auto_pcap = pcap_file;
+        cli.pcap_file = pcap_file;
+    }
+
     /* ---- Validate arguments ---- */
     if (pcap_file && !pcap_file[0]) {
         fprintf(stderr, "[ERROR] PCAP file path cannot be empty\n");
@@ -285,6 +364,24 @@ int main(int argc, char *argv[])
     memset(&g_app, 0, sizeof(g_app));
     g_app.anomaly_threshold = anomaly_thr;
     g_app.verbose           = verbose;
+
+    /* Initialise logger from environment or verbose flag */
+    const char *logfile = getenv("PQCHECK_LOG_FILE");
+    const char *lvl = getenv("PQCHECK_LOG_LEVEL");
+    if (verbose) {
+        logger_init(logfile, LOG_DEBUG);
+    } else if (lvl) {
+        if (strcasecmp(lvl, "debug") == 0)
+            logger_init(logfile, LOG_DEBUG);
+        else if (strcasecmp(lvl, "info") == 0)
+            logger_init(logfile, LOG_INFO);
+        else if (strcasecmp(lvl, "warn") == 0 || strcasecmp(lvl, "warning") == 0)
+            logger_init(logfile, LOG_WARN);
+        else
+            logger_init(logfile, LOG_INFO);
+    } else {
+        logger_init(logfile, LOG_INFO);
+    }
 
     if (verbose) {
         if (db_connstr) {
