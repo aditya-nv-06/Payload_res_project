@@ -1,0 +1,71 @@
+name: pqCheck CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libpcap-dev libpq-dev libncurses-dev python3
+
+      - name: Build default target
+        run: make -B
+
+      - name: Build TUI target
+        run: make -B WITH_TUI=1
+
+      - name: Run unit tests
+        run: make test
+
+      - name: Run audit unit tests
+        run: make audit-test
+
+  postgres-audit:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PG_CONNSTR: host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres sslmode=disable
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libpcap-dev libpq-dev python3
+
+      - name: Build with libpq
+        run: make -B
+
+      - name: Run PostgreSQL system audit
+        run: ./pqCheck --audit -c "$PG_CONNSTR" --audit-json results/pg-audit.json

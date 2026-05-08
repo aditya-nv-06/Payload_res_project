@@ -1,0 +1,62 @@
+name: pqCheck Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build and packaging dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libpcap-dev libpq-dev libncurses-dev ruby-dev python3 tar gzip
+          sudo gem install --no-document fpm
+
+      - name: Build full-featured binary
+        run: make -B WITH_LIBPQ=1 WITH_TUI=1
+
+      - name: Create release staging directory
+        run: |
+          rm -rf dist
+          mkdir -p dist/pqCheck-release/bin dist/pqCheck-release/config dist/pqCheck-release/docs
+          cp pqCheck dist/pqCheck-release/bin/
+          cp -r config/* dist/pqCheck-release/config/
+          cp -r docs/* dist/pqCheck-release/docs/
+          cp README.md BUILD.md TESTING.md dist/pqCheck-release/
+
+      - name: Create source archive
+        run: |
+          tar -czf dist/pqCheck-source.tar.gz \
+            --exclude=.git \
+            --exclude=dist \
+            --exclude=pqCheck \
+            .
+
+      - name: Build DEB package
+        run: bash packaging/build-deb.sh
+
+      - name: Build RPM package
+        run: bash packaging/build-rpm.sh
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist/artifacts
+          cp dist/pqCheck-source.tar.gz dist/artifacts/
+          cp pqcheck_1.0.0_amd64.deb dist/artifacts/ || true
+          cp pqcheck-1.0.0-1.x86_64.rpm dist/artifacts/ || true
+          sha256sum dist/artifacts/* > dist/artifacts/SHA256SUMS
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
