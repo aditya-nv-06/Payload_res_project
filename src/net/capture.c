@@ -20,7 +20,8 @@ struct capture_ctx {
 
 /* --- internal: shared BPF setup ------------------------------------------ */
 
-static int apply_filter(capture_ctx_t *ctx, const char *bpf_extra)
+/* Apply a filter by combining with default port, or use custom filter */
+static int apply_filter_extra(capture_ctx_t *ctx, const char *bpf_extra)
 {
     char expr[512];
     if (bpf_extra && bpf_extra[0])
@@ -37,6 +38,30 @@ static int apply_filter(capture_ctx_t *ctx, const char *bpf_extra)
     if (pcap_setfilter(ctx->handle, &fp) < 0) {
         fprintf(stderr, "[capture] pcap_setfilter failed: %s\n",
                 pcap_geterr(ctx->handle));
+        pcap_freecode(&fp);
+        return -1;
+    }
+    pcap_freecode(&fp);
+    return 0;
+}
+
+/* Apply a custom BPF filter as-is */
+static int apply_filter_custom(capture_ctx_t *ctx, const char *bpf)
+{
+    if (!bpf || !bpf[0]) {
+        /* No filter – capture all */
+        return 0;
+    }
+
+    struct bpf_program fp;
+    if (pcap_compile(ctx->handle, &fp, bpf, 1, PCAP_NETMASK_UNKNOWN) < 0) {
+        fprintf(stderr, "[capture] pcap_compile failed (filter: %s): %s\n",
+                bpf, pcap_geterr(ctx->handle));
+        return -1;
+    }
+    if (pcap_setfilter(ctx->handle, &fp) < 0) {
+        fprintf(stderr, "[capture] pcap_setfilter failed (filter: %s): %s\n",
+                bpf, pcap_geterr(ctx->handle));
         pcap_freecode(&fp);
         return -1;
     }
@@ -72,7 +97,7 @@ capture_ctx_t *capture_open_live(const char *iface, const char *bpf_extra)
     }
     ctx->datalink = pcap_datalink(ctx->handle);
 
-    if (apply_filter(ctx, bpf_extra) < 0) {
+    if (apply_filter_extra(ctx, bpf_extra) < 0) {
         pcap_close(ctx->handle);
         free(ctx);
         return NULL;
@@ -101,7 +126,7 @@ capture_ctx_t *capture_open_file(const char *path, const char *bpf_extra)
     }
     ctx->datalink = pcap_datalink(ctx->handle);
 
-    if (apply_filter(ctx, bpf_extra) < 0) {
+    if (apply_filter_extra(ctx, bpf_extra) < 0) {
         pcap_close(ctx->handle);
         free(ctx);
         return NULL;
@@ -114,6 +139,69 @@ capture_ctx_t *capture_open_file(const char *path, const char *bpf_extra)
 
 pcap_t *capture_pcap(capture_ctx_t *ctx) { return ctx->handle; }
 int     capture_datalink(capture_ctx_t *ctx) { return ctx->datalink; }
+
+capture_ctx_t *capture_open_live_with_filter(const char *iface, const char *bpf)
+{
+    capture_ctx_t *ctx = calloc(1, sizeof(*ctx));
+    if (!ctx) return NULL;
+
+    ctx->handle = pcap_open_live(iface, SNAPLEN, PROMISC,
+                                 READ_TIMEOUT, ctx->errbuf);
+    if (!ctx->handle) {
+        fprintf(stderr, "[capture] pcap_open_live(%s): %s\n",
+                iface, ctx->errbuf);
+        free(ctx);
+        return NULL;
+    }
+    ctx->datalink = pcap_datalink(ctx->handle);
+
+    if (apply_filter_custom(ctx, bpf) < 0) {
+        pcap_close(ctx->handle);
+        free(ctx);
+        return NULL;
+    }
+
+    /* Register SIGINT handler for graceful shutdown */
+    g_sigint_handle = ctx->handle;
+    signal(SIGINT, sigint_handler);
+
+    if (bpf && bpf[0])
+        fprintf(stderr, "[capture] live capture on %s (DLT %d), filter: %s\n",
+                iface, ctx->datalink, bpf);
+    else
+        fprintf(stderr, "[capture] live capture on %s (DLT %d), no filter\n",
+                iface, ctx->datalink);
+    return ctx;
+}
+
+capture_ctx_t *capture_open_file_with_filter(const char *path, const char *bpf)
+{
+    capture_ctx_t *ctx = calloc(1, sizeof(*ctx));
+    if (!ctx) return NULL;
+
+    ctx->handle = pcap_open_offline(path, ctx->errbuf);
+    if (!ctx->handle) {
+        fprintf(stderr, "[capture] pcap_open_offline(%s): %s\n",
+                path, ctx->errbuf);
+        free(ctx);
+        return NULL;
+    }
+    ctx->datalink = pcap_datalink(ctx->handle);
+
+    if (apply_filter_custom(ctx, bpf) < 0) {
+        pcap_close(ctx->handle);
+        free(ctx);
+        return NULL;
+    }
+
+    if (bpf && bpf[0])
+        fprintf(stderr, "[capture] offline file %s (DLT %d), filter: %s\n",
+                path, ctx->datalink, bpf);
+    else
+        fprintf(stderr, "[capture] offline file %s (DLT %d), no filter\n",
+                path, ctx->datalink);
+    return ctx;
+}
 
 void capture_loop(capture_ctx_t *ctx, packet_cb_t cb, void *user)
 {

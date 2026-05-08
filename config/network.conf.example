@@ -1,0 +1,28 @@
+# config/network.conf.example
+# Example network configuration for production deployments
+#
+# This file supports monitoring PostgreSQL on:
+#   - Multiple TCP ports (e.g., 5432, 5433, read replicas on 5434)
+#   - Multiple destination IPs (e.g., primary DB, standbys)
+#   - Custom alert output location
+
+# TCP ports where PostgreSQL is listening (required, comma-separated)
+# Common patterns:
+#   - Single port: 5432
+#   - Multiple ports: 5432,5433,5434
+#   - Read replicas: 5432,5433
+ports=5432,5433
+
+# Destination IP addresses to monitor (optional, comma-separated)
+# If omitted, all destination IPs are monitored
+# Examples:
+#   - Single IP: 10.0.0.5
+#   - Multiple IPs: 10.0.0.5,192.168.1.100,10.0.0.6
+#   - Subnet-like pattern: use individual IPs
+ips=10.0.0.5,10.0.0.6
+
+# Output file path (optional, can override CLI -o flag)
+# Useful when you want to:
+#   - Log to a central location
+#   - Use a different path than the default alerts.jsonl
+# output_path=/var/log/pqcheck/alerts.jsonl

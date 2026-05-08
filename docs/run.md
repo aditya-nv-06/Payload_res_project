@@ -24,3 +24,11 @@ This guide is the entry point for running `pqCheck` on each supported platform.
 
 The `pqCheck` executable is the compiled sensor binary.
 If you want to invoke it without a path prefix, place the repository root on your `PATH` or install the launcher somewhere on `PATH`.
+
+## Production usage with PCAPs
+
+In production pipelines you can provide offline PCAP files instead of live capture using `-r <file>`. This is suitable for batch analysis, replaying traffic, or running detection on staged captures. Use `-A <file>` to build an in-memory n-gram model from a PCAP and immediately proceed to detection (for example, when bootstrapping a model from recent traffic).
+
+## Custom Network Configuration
+
+For production deployments where PostgreSQL runs on non-standard ports or multiple IPs, see [docs/network-config.md](network-config.md) for configuring port and IP monitoring via a config file. You can specify multiple ports and destination IPs without modifying CLI flags.

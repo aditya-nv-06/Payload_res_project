@@ -37,6 +37,18 @@ capture_ctx_t *capture_open_live(const char *iface, const char *bpf_extra);
  */
 capture_ctx_t *capture_open_file(const char *path, const char *bpf_extra);
 
+/*
+ * Open a live capture with a custom BPF filter (no default port added).
+ * bpf: complete BPF expression to use as-is, or NULL for no filter.
+ */
+capture_ctx_t *capture_open_live_with_filter(const char *iface, const char *bpf);
+
+/*
+ * Open an offline .pcap file with a custom BPF filter (no default port added).
+ * bpf: complete BPF expression to use as-is, or NULL for no filter.
+ */
+capture_ctx_t *capture_open_file_with_filter(const char *path, const char *bpf);
+
 /* Return the underlying pcap_t (needed for pcap_dump). */
 pcap_t *capture_pcap(capture_ctx_t *ctx);
 

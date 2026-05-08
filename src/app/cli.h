@@ -10,11 +10,18 @@ typedef struct {
     const char *pcap_dump;
     const char *model_path;
     const char *corpus_path;
+    const char *auto_pcap;    /* Path to pcap used to auto-train model */
+    const char *net_config_path; /* Network config (ports, IPs, output_path) */
     const char *pg_connstr;
     const char *db_connstr;
 #ifdef WITH_LIBPQ
     const char *db_sql;
 #endif
+    int         tui_mode;         /* Enable TUI mode */
+    int         gen_test_output;  /* Generate test PCAP: non-zero = output file (1 for default) */
+    int         gen_test_injection; /* Include SQL injection in generated PCAP */
+    int         gen_test_clean_count;  /* Number of clean queries */
+    int         gen_test_injection_count;  /* Number of injection queries */
     double      anomaly_thr;
     int         verbose;
 } cli_options_t;

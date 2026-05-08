@@ -9,9 +9,15 @@ A passive network intrusion-detection sensor for PostgreSQL (TCP/5432) written i
 - passive packet inspection from live capture or offline PCAP, and
 - direct PostgreSQL session mode for executing and scoring SQL statements.
 
+Optional interactive TUI (Text User Interface) mode for real-time monitoring with a dashboard, alert log viewer, and configuration display.
+
+**🚀 Getting Started?** Start with [docs/QUICK-REF.md](docs/QUICK-REF.md) for 30-second start + command cheat sheet, then read [docs/quickstart.md](docs/quickstart.md) for the full walkthrough.
+
 See [docs/architecture.md](docs/architecture.md) for the full Mermaid diagram and module map.
 For platform-specific run instructions, see [docs/run.md](docs/run.md).
 For the n-gram corpus model guide, see [docs/ngram.md](docs/ngram.md).
+For TUI usage, see [docs/tui.md](docs/tui.md).
+For PCAP file management, see [docs/pcap-guide.md](docs/pcap-guide.md).
 
 ## Components
 
@@ -38,16 +44,25 @@ sudo apt-get install -y build-essential libpcap-dev
 
 # With pg_stat_activity correlation:
 sudo apt-get install -y libpq-dev
+
+# With interactive TUI mode:
+sudo apt-get install -y libncurses-dev
 ```
 
 ### Compile
 
 ```bash
-# Without libpq (rule + anomaly detection only):
+# Without libpq or ncurses (rule + anomaly detection only):
 make
 
 # With libpq (adds pg_stat_activity correlation):
 make WITH_LIBPQ=1
+
+# With ncurses TUI (interactive dashboard):
+make WITH_TUI=1
+
+# With both:
+make WITH_LIBPQ=1 WITH_TUI=1
 ```
 
 ### Run unit tests
@@ -78,15 +93,59 @@ pqCheck --version
 ### Common commands
 
 ```bash
+# FIRST TIME? Generate test traffic directly (no external tools needed!)
+pqCheck --gen-test -o test_traffic.pcap
+
+# Auto-train model from test traffic + run detection
+pqCheck -A test_traffic.pcap -r test_traffic.pcap \
+  -R config/rules.conf -o alerts.jsonl -v
+
+# View results
+cat alerts.jsonl | jq .
+```
+
+**For production environments:**
+
+```bash
 # Offline scan of a PCAP file
 pqCheck -r results/sqli_classic.pcap -R config/rules.conf -o alerts.jsonl -v
 
-# Train an n-gram model from a corpus
+# Interactive TUI dashboard (requires ncurses)
+pqCheck --tui -r capture.pcap -R config/rules.conf -m baseline.model
+
+# Train an n-gram model from a SQL corpus
 pqCheck -t corpus.sql -m baseline.model
 
 # Live capture on an interface (usually requires sudo or CAP_NET_RAW)
 sudo pqCheck -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl -v
 ```
+
+### Auto-train from PCAP (quick)
+
+You can auto-train an in-memory n-gram model from a PCAP and then run detection. Example:
+
+```bash
+pqCheck -A train.pcap -r monitor.pcap -R config/rules.conf -o alerts.jsonl -v
+```
+
+Production note: offline PCAP files may be used in production workflows — supply them with `-r <file>` for detection, or use `-A <file>` to train a temporary model from historical traffic before running detection.
+
+### Monitor custom PostgreSQL ports and IPs
+
+For production environments where PostgreSQL runs on non-standard ports or multiple destinations, use a network config file:
+
+```bash
+# Edit config/network.conf:
+# ports=5432,5433,5434
+# ips=10.0.0.5,192.168.1.100
+
+pqCheck -r monitor.pcap -N config/network.conf -R config/rules.conf -o alerts.jsonl -v
+```
+
+The network config file supports:
+- `ports` – comma-separated TCP ports (e.g., `5432,5433`)
+- `ips` – comma-separated destination IPs (optional)
+- `output_path` – override default alert output location (optional)
 
 ### Flags
 
@@ -100,6 +159,8 @@ sudo pqCheck -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl -v
 | `-p <pcap>` | Dump flagged packets to a PCAP file |
 | `-m <model>` | N-gram model file used for anomaly scoring |
 | `-t <corpus>` | Train an n-gram model from a SQL corpus and save it to `-m` |
+| `-A <pcap>` | Auto-train in-memory n-gram model from a PCAP file |
+| `-N <config>` | Network config file (custom ports, IPs, output path) |
 | `-T <threshold>` | Anomaly threshold (default: `-5.0`) |
 | `-c <connstr>` | libpq connection string for `pg_stat_activity` correlation |
 | `-d <connstr>` | Open a direct PostgreSQL session, score each entered query, and execute it |
@@ -111,6 +172,7 @@ sudo pqCheck -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl -v
 ### Notes
 
 - `-t` requires `-m`; training mode exits after the model is written.
+- `-N` allows you to configure custom PostgreSQL ports and destination IPs via a config file.
 - Live capture usually needs root privileges or `CAP_NET_RAW`.
 - Example traffic generators live in [tests/gen_test_traffic.py](tests/gen_test_traffic.py).
 

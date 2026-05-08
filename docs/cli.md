@@ -77,6 +77,68 @@ pqCheck \
 pqCheck -t corpus.sql -m baseline.model
 ```
 
+### Auto-train from PCAP (new)
+
+You can build an in-memory n-gram model directly from a PCAP file and immediately run detection. Use `-A <pcap>` (or `--auto`) to extract SQL queries from the PCAP, train a model in-memory, then continue into detection mode.
+
+Examples:
+
+Train from a PCAP and then detect on the same file:
+
+```bash
+pqCheck -A train.pcap -r train.pcap -R config/rules.conf -o alerts.jsonl -v
+```
+
+Train from a PCAP and detect on a different PCAP:
+
+```bash
+pqCheck -A train.pcap -r monitor.pcap -R config/rules.conf -o alerts.jsonl -v
+```
+
+Notes:
+- If both `-A` and `-m` are provided, the disk model given by `-m` takes precedence and auto-training is skipped.
+- The `-A` option currently trains the model in memory; to persist a model, use `-t` / `-m` with a corpus file.
+
+### Network configuration (custom ports and IPs)
+
+You can configure which PostgreSQL ports and destination IPs to monitor using a network config file. This is useful in production when PostgreSQL runs on non-standard ports or across multiple IPs.
+
+Create a config file (e.g., `config/network.conf`) with:
+
+```
+ports=5432,5433,5434
+ips=10.0.0.5,192.168.1.100
+output_path=/var/log/pqcheck/alerts.jsonl
+```
+
+Then pass it to pqCheck:
+
+```bash
+pqCheck -r monitor.pcap -N config/network.conf -R config/rules.conf -v
+```
+
+Notes:
+- `ports`: comma-separated list of TCP ports to monitor (required)
+- `ips`: comma-separated list of destination IPs to monitor (optional; if omitted, all IPs are monitored)
+- `output_path`: overrides the `-o` flag if specified
+- When `-N` is provided, a custom BPF filter is generated instead of the default "tcp port 5432"
+
+### Interactive TUI mode
+
+Use `--tui` to launch an interactive dashboard for real-time monitoring.
+
+```bash
+pqCheck --tui -r capture.pcap -R config/rules.conf -m baseline.model
+```
+
+Features:
+- **Dashboard** – Real-time statistics and status
+- **Alert Log** – Scrollable list of detected SQL injection attempts
+- **Configuration** – View current settings
+- **Help** – Keyboard shortcuts
+
+For detailed TUI usage, see [docs/tui.md](tui.md).
+
 ### Flagged packet dump
 
 ```bash
@@ -146,11 +208,14 @@ pqCheck \
 | `-p <pcap>` | Write flagged traffic to a PCAP file. |
 | `-m <model>` | Load an n-gram model from disk for anomaly scoring. |
 | `-t <corpus>` | Train an n-gram model from a corpus file and save it to `-m`. |
+| `-A <pcap>` | Auto-train an in-memory n-gram model from a PCAP (extracts queries). |
+| `-N <config>` | Network config file (custom ports, IPs, and output path). |
 | `-T <threshold>` | Anomaly threshold. Default: `-5.0`. Lower values are stricter. |
 | `-c <connstr>` | libpq connection string for `pg_stat_activity` correlation. |
 | `-d <connstr>` | Open a direct PostgreSQL session, score each entered query, and execute it. |
 | `-e <sql>` | Execute one SQL statement in `-d` mode, then disconnect. |
 | `-v` | Verbose logging to stderr. |
+| `--tui` | Enable interactive TUI mode (requires ncurses). |
 | `-h`, `--help` | Show help. |
 | `--version` | Print the CLI version. |
 

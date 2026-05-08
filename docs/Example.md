@@ -3,7 +3,42 @@
 This guide shows the most common ways to use `pqCheck` in plain language.
 Each example includes the goal, the command, and what to expect.
 
+**New in v1.0.0:** Auto-train n-gram models directly from PCAPs (Example 9), and configure custom PostgreSQL ports/IPs via config file (Example 10).
+
 If you want to understand the corpus model behind the anomaly score, see [docs/ngram.md](ngram.md).
+For detailed network config options, see [docs/network-config.md](network-config.md).
+For a complete walkthrough of PCAP generation and workflow, see **[docs/quickstart.md](quickstart.md)** (recommended for new users).
+For in-depth PCAP management and troubleshooting, see [docs/pcap-guide.md](pcap-guide.md).
+
+## 0. Generate test traffic (for learning, no PostgreSQL needed)
+
+Use this when you want to try `pqCheck` but don't have a PostgreSQL database running or existing PCAP files.
+
+```bash
+# Generate synthetic test traffic with clean queries and SQL injection attempts
+pqCheck --gen-test -o test_traffic.pcap
+
+# Or customize the mix (20 clean + 30 injection):
+pqCheck --gen-test --gen-clean 20 --gen-inject 30 -o test_traffic.pcap
+
+# Verify the file was created
+ls -lh test_traffic.pcap
+file test_traffic.pcap
+```
+
+What happens:
+
+- pqCheck generates synthetic PostgreSQL protocol packets directly,
+- the output includes 50 clean SQL queries and 50 SQL injection attempts by default (customizable),
+- the PCAP file is valid and suitable for training and testing `pqCheck`, and
+- you can use it immediately with Examples 1, 9, and 11.
+
+Optional flags:
+
+```bash
+pqCheck --gen-test --gen-clean 100 --gen-inject 0 -o clean_only.pcap
+#                   ^^^^^^^^^^^           ^^^^^^ customize counts
+```
 
 ## 1. Check a saved capture for SQL injection
 
@@ -166,7 +201,63 @@ What happens:
 - it is sent to PostgreSQL once,
 - the connection closes immediately after execution.
 
-## 9. Inspect the output
+## 9. Auto-train from PCAP and detect immediately
+
+Use this when you want to bootstrap an n-gram model from clean traffic in one PCAP, then run detection on the same or another PCAP without saving the model to disk.
+
+```bash
+pqCheck \
+  -A results/baseline.pcap \
+  -r results/sqli_obfuscated.pcap \
+  -R config/rules.conf \
+  -o alerts.jsonl \
+  -v
+```
+
+What happens:
+
+- `pqCheck` reads `results/baseline.pcap` and extracts all SQL queries,
+- an in-memory n-gram model is trained on those queries,
+- the model is immediately used to score traffic in `results/sqli_obfuscated.pcap`,
+- no model file is written to disk, and
+- alerts are logged normally.
+
+This is useful for batch jobs or when you want a fast anomaly baseline without pre-training.
+
+## 10. Monitor custom PostgreSQL ports and IPs using a config file
+
+Use this when PostgreSQL runs on non-standard ports or multiple database servers.
+
+Create a config file (e.g., `config/network.conf`):
+
+```
+ports=5432,5433,5434
+ips=10.0.0.5,10.0.0.6
+output_path=/var/log/pqcheck/alerts.jsonl
+```
+
+Then use it:
+
+```bash
+pqCheck \
+  -r capture.pcap \
+  -N config/network.conf \
+  -R config/rules.conf \
+  -m baseline.model \
+  -v
+```
+
+What happens:
+
+- the network config file is parsed,
+- a custom BPF filter is generated for the specified ports and destination IPs,
+- only traffic matching that filter is processed,
+- the output path is overridden from the config (if specified),
+- all other detection logic proceeds normally.
+
+This is ideal for production deployments across multiple database servers or custom port assignments.
+
+## 11. Inspect the output
 
 After a scan, you can read the alert log with `jq`.
 

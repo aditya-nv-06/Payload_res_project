@@ -17,11 +17,18 @@ void cli_options_init(cli_options_t *opts)
     opts->pcap_dump   = NULL;
     opts->model_path  = NULL;
     opts->corpus_path = NULL;
+    opts->auto_pcap    = NULL;
+    opts->net_config_path = NULL;
     opts->pg_connstr  = NULL;
     opts->db_connstr  = NULL;
 #ifdef WITH_LIBPQ
     opts->db_sql      = NULL;
 #endif
+    opts->tui_mode    = 0;
+    opts->gen_test_output = 0;
+    opts->gen_test_injection = 0;
+    opts->gen_test_clean_count = 50;
+    opts->gen_test_injection_count = 50;
     opts->anomaly_thr = -5.0;
     opts->verbose     = 0;
 }
@@ -67,8 +74,12 @@ static void print_usage(const char *prog)
             "\n"
             "ANALYSIS OPTIONS:\n"
             "  -R <rules>     Rules config file (default: config/rules.conf)\n"
-            "  -m <model>     N-gram model file (enables anomaly scoring)\n"
+                "  -m <model>     N-gram model file (enables anomaly scoring)\n"
+                "  -A <pcap>      Extract queries from PCAP and auto-train model\n"
             "  -T <thresh>    Anomaly threshold (default: -5.0)\n"
+            "\n"
+            "NETWORK CONFIG (alternative to CLI flags):\n"
+            "  -N <config>    Network config file (ports, IPs, output_path)\n"
             "\n"
             "DB SESSION OPTIONS:\n"
             "  -d <connstr>   Connect to PostgreSQL and execute SQL strings\n"
@@ -87,12 +98,16 @@ static void print_usage(const char *prog)
         "\n"
         "TRAINING:\n"
         "  -t <corpus>    Train n-gram model from corpus (requires -m)\n"
+        "  --gen-test     Generate synthetic test PCAP (use with -o to save)\n"
+        "  --gen-clean N  Number of clean queries (default: 50)\n"
+        "  --gen-inject N Number of injection queries (default: 50)\n"
         "\n"
         "DATABASE OPTIONS:\n"
         "  -c <connstr>   libpq connection string for pg_stat_activity\n"
         "\n"
         "OTHER:\n"
         "  -v             Verbose output to stderr\n"
+        "  --tui          Enable interactive TUI mode (requires ncurses)\n"
         "  --version      Show version information\n"
         "  -h, --help     Show this help message\n"
         "\n"
@@ -109,13 +124,16 @@ static void print_usage(const char *prog)
         "  # Advanced: anomaly + rule detection + packet dump\n"
         "  %s -r pcap.file -m model.ngram -p flagged.pcap -o alerts.jsonl\n"
         "\n"
+        "  # Monitor custom PostgreSQL ports/IPs via network config\n"
+        "  %s -r capture.pcap -N config/network.conf -o alerts.jsonl\n"
+        "\n"
         "  # Connect to a database and evaluate each entered SQL statement\n"
         "  %s -d \"host=localhost dbname=postgres user=postgres\" -v\n"
         "\n"
         "  # Execute a single SQL statement in database session mode\n"
         "  %s -d \"host=localhost dbname=postgres user=postgres\" -e \"SELECT 1\"\n"
         "\n",
-        prog, prog, prog, prog, prog, prog);
+        prog, prog, prog, prog, prog, prog, prog);
         }
 }
 
@@ -124,11 +142,17 @@ int cli_parse(int argc, char **argv, cli_options_t *opts, const char *prog)
     struct option long_opts[] = {
         {"help",    no_argument,       NULL, 'h'},
         {"version", no_argument,       NULL,  1 },
+        {"auto",    required_argument, NULL,  'A' },
+        {"net-config", required_argument, NULL, 'N'},
+        {"tui",     no_argument,       NULL,  2 },
+        {"gen-test", no_argument,      NULL,  3 },
+        {"gen-clean", required_argument, NULL, 4 },
+        {"gen-inject", required_argument, NULL, 5 },
         {0, 0, 0, 0}
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "i:r:f:R:o:p:m:t:T:c:d:e:vh",
+    while ((opt = getopt_long(argc, argv, "i:r:f:R:o:p:m:t:T:c:d:e:vhA:N:",
                               long_opts, NULL)) != -1) {
         switch (opt) {
         case 'i': opts->iface       = optarg; break;
@@ -139,6 +163,12 @@ int cli_parse(int argc, char **argv, cli_options_t *opts, const char *prog)
         case 'p': opts->pcap_dump   = optarg; break;
         case 'm': opts->model_path  = optarg; break;
         case 't': opts->corpus_path = optarg; break;
+        case 'A': opts->auto_pcap    = optarg; break;
+        case 'N': opts->net_config_path = optarg; break;
+        case 2:   opts->tui_mode    = 1; break;          /* --tui */
+        case 3:   opts->gen_test_output = 1; break;      /* --gen-test */
+        case 4:   opts->gen_test_clean_count = atoi(optarg); break; /* --gen-clean */
+        case 5:   opts->gen_test_injection_count = atoi(optarg); break; /* --gen-inject */
         case 'T':
             opts->anomaly_thr = atof(optarg);
             if (opts->anomaly_thr == 0.0) {

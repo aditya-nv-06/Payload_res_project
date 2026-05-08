@@ -3,6 +3,7 @@
 # Targets:
 #   make              – build without libpq (anomaly + rule detection only)
 #   make WITH_LIBPQ=1 – build with pg_stat_activity correlation via libpq
+#   make WITH_TUI=1   – build with ncurses-based interactive TUI
 #   make test         – compile and run unit tests
 #   make clean        – remove build artefacts
 
@@ -23,6 +24,8 @@ TARGET  := pqCheck
 TEST_TARGET := test_detector
 
 SRCS := src/common/util.c \
+        src/common/net_config.c \
+        src/common/pcap_gen.c \
         src/app/cli.c     \
         src/net/capture.c \
         src/net/reassembly.c \
@@ -51,6 +54,16 @@ TEST_SRCS := tests/test_detector.c \
 ifdef WITH_LIBPQ
   CFLAGS  += -DWITH_LIBPQ $(shell pg_config --cppflags 2>/dev/null)
   LDFLAGS += $(shell pg_config --ldflags 2>/dev/null) -lpq
+endif
+
+# --------------------------------------------------------------------------- #
+# Optional ncurses TUI support                                                #
+# --------------------------------------------------------------------------- #
+
+ifdef WITH_TUI
+  CFLAGS  += -DWITH_TUI
+  LDFLAGS += -lncurses
+  SRCS    += src/ui/tui.c
 endif
 
 # --------------------------------------------------------------------------- #
