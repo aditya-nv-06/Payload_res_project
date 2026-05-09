@@ -1,0 +1,37 @@
+[Unit]
+Description=pqCheck PostgreSQL Payload Fragmentation & SQLi Detection Sensor
+Documentation=file:///usr/share/doc/pqcheck/README.md
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=pqcheck
+Group=pqcheck
+WorkingDirectory=/var/lib/pqcheck
+ExecStart=/usr/bin/pqCheck --daemon --config /etc/pqcheck/network.conf
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/log/pqcheck /var/lib/pqcheck
+
+# Capability for raw packet capture
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pqcheck
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+
+# Timeout
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
