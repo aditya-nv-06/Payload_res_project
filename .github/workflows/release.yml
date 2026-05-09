@@ -5,10 +5,13 @@ on:
     tags:
       - "v*"
 
+env:
+  VERSION: "1.0.0"
+  ARCH: "x86_64"
+
 jobs:
   changelog:
     runs-on: ubuntu-latest
-
     outputs:
       changelog_path: ${{ steps.write.outputs.changelog_path }}
 
@@ -23,19 +26,27 @@ jobs:
         run: |
           mkdir -p dist
           CURRENT_TAG="${GITHUB_REF_NAME}"
-          PREV_TAG="$(git tag --sort=-creatordate | grep -vx "$CURRENT_TAG" | head -n 1 || true)"
+          PREV_TAG="$(git tag --sort=-creatordate | grep -vx "$CURRENT_TAG" | head -n 1 || echo '')"
 
           {
             echo "# pqCheck ${CURRENT_TAG}"
             echo
             if [ -n "$PREV_TAG" ]; then
               echo "## Changes since ${PREV_TAG}"
-              git log --no-merges --pretty=format:'- %s (%h)' "${PREV_TAG}..${CURRENT_TAG}"
+              git log --no-merges --oneline "${PREV_TAG}..${CURRENT_TAG}" 2>/dev/null
+              echo ""
+              echo "**Full Changelog:** [${PREV_TAG}...${CURRENT_TAG}](https://github.com/aditya-nv-06/Payload_res_project/compare/${PREV_TAG}...${CURRENT_TAG})"
             else
-              echo "## Changes in this release"
-              git log --no-merges --pretty=format:'- %s (%h)' "${CURRENT_TAG}^..${CURRENT_TAG}" || true
+              echo "## Initial Release"
+              git log --no-merges --oneline 2>/dev/null | head -20
             fi
           } > dist/CHANGELOG.md
+
+          if [ ! -s dist/CHANGELOG.md ]; then
+            echo "# pqCheck ${CURRENT_TAG}" > dist/CHANGELOG.md
+            echo "" >> dist/CHANGELOG.md
+            echo "Release: ${CURRENT_TAG}" >> dist/CHANGELOG.md
+          fi
 
           echo "changelog_path=dist/CHANGELOG.md" >> "$GITHUB_OUTPUT"
 
@@ -44,6 +55,7 @@ jobs:
         with:
           name: changelog
           path: dist/CHANGELOG.md
+          retention-days: 1
 
   source-archive:
     runs-on: ubuntu-latest
@@ -57,15 +69,27 @@ jobs:
           mkdir -p dist
           tar -czf dist/pqCheck-source.tar.gz \
             --exclude=.git \
+            --exclude=.github \
             --exclude=dist \
             --exclude=pqCheck \
+            --exclude=test_detector \
+            --exclude=db_validation_test \
+            --exclude='*.o' \
+            --exclude='*.a' \
+            --exclude=pgsql_ids \
+            --exclude=baseline.model \
+            --exclude=.markdownlint.json \
+            --exclude=venv \
             .
+          
+          ls -lh dist/pqCheck-source.tar.gz
 
       - name: Upload source artifact
         uses: actions/upload-artifact@v4
         with:
           name: source-archive
           path: dist/pqCheck-source.tar.gz
+          retention-days: 1
 
   packages:
     runs-on: ubuntu-latest
@@ -75,11 +99,11 @@ jobs:
           - format: deb
             script: packaging/build-deb.sh
             artifact_name: pqcheck-deb
-            package_glob: pqcheck_1.0.0_amd64.deb
+            package_glob: "pqcheck_*.deb"
           - format: rpm
             script: packaging/build-rpm.sh
             artifact_name: pqcheck-rpm
-            package_glob: pqcheck-1.0.0-1.x86_64.rpm
+            package_glob: "pqcheck-*.x86_64.rpm"
 
     steps:
       - name: Checkout
@@ -87,21 +111,36 @@ jobs:
 
       - name: Install build and packaging dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libpcap-dev libpq-dev libncurses-dev ruby-dev python3 tar gzip
-          sudo gem install --no-document fpm
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            libpcap-dev \
+            libpq-dev \
+            libncurses-dev \
+            ruby-dev \
+            python3 \
+            tar \
+            gzip
+          
+          echo "Installing fpm..."
+          sudo gem install --quiet --no-document fpm 2>&1 | grep -v "^$" || true
+          fpm --version
 
-      - name: Build full-featured binary
-        run: make -B WITH_LIBPQ=1 WITH_TUI=1
-
-      - name: Build package
-        run: bash ${{ matrix.script }}
+      - name: Build package (${{ matrix.format }})
+        run: |
+          echo "Building ${{ matrix.format }} package..."
+          bash ${{ matrix.script }}
+          
+          echo "Verifying package..."
+          ls -lh ${{ matrix.package_glob }}
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.package_glob }}
+          if-no-files-found: error
+          retention-days: 1
 
   publish-release:
     runs-on: ubuntu-latest
@@ -111,36 +150,83 @@ jobs:
       - packages
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist/download
 
-      - name: List release artifacts
+      - name: List downloaded artifacts
         run: |
-          find dist/download -type f | sort
+          echo "Downloaded artifacts:"
+          find dist/download -type f -printf '%P (%s bytes)\n' | sort
+          echo ""
+          echo "Directory structure:"
+          tree dist/download 2>/dev/null || find dist/download -type f -o -type d | sort
 
       - name: Prepare release artifacts
         run: |
           mkdir -p dist/artifacts
-          cp dist/download/source-archive/*.tar.gz dist/artifacts/ || true
-          cp dist/download/pqcheck-deb/*.deb dist/artifacts/ || true
-          cp dist/download/pqcheck-rpm/*.rpm dist/artifacts/ || true
+          
+          # Copy source archive
+          if [ -f dist/download/source-archive/*.tar.gz ]; then
+            cp dist/download/source-archive/*.tar.gz dist/artifacts/
+            echo "✓ Source archive copied"
+          else
+            echo "✗ Source archive not found!"
+            exit 1
+          fi
+          
+          # Copy DEB package
+          if [ -f dist/download/pqcheck-deb/*.deb ]; then
+            cp dist/download/pqcheck-deb/*.deb dist/artifacts/
+            echo "✓ DEB package copied"
+          else
+            echo "✗ DEB package not found!"
+            exit 1
+          fi
+          
+          # Copy RPM package
+          if [ -f dist/download/pqcheck-rpm/*.rpm ]; then
+            cp dist/download/pqcheck-rpm/*.rpm dist/artifacts/
+            echo "✓ RPM package copied"
+          else
+            echo "✗ RPM package not found!"
+            exit 1
+          fi
+          
+          echo ""
+          echo "Final artifacts:"
+          ls -lh dist/artifacts/
 
-      - name: Write release notes
+      - name: Prepare release notes
         run: |
-          mkdir -p dist
-          cp dist/download/changelog/CHANGELOG.md dist/RELEASE_NOTES.md
+          if [ -f dist/download/changelog/CHANGELOG.md ]; then
+            cp dist/download/changelog/CHANGELOG.md dist/RELEASE_NOTES.md
+          else
+            echo "# Release ${GITHUB_REF_NAME}" > dist/RELEASE_NOTES.md
+            echo "" >> dist/RELEASE_NOTES.md
+            echo "Released: $(date -u +%Y-%m-%d)" >> dist/RELEASE_NOTES.md
+          fi
+          
+          echo ""
+          echo "Release Notes:"
+          cat dist/RELEASE_NOTES.md
 
-      - name: Upload release assets
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           draft: false
           prerelease: false
           files: |
             dist/artifacts/pqCheck-source.tar.gz
-            dist/artifacts/pqcheck_1.0.0_amd64.deb
-            dist/artifacts/pqcheck-1.0.0-1.x86_64.rpm
+            dist/artifacts/pqcheck_*.deb
+            dist/artifacts/pqcheck-*.rpm
           body_path: dist/RELEASE_NOTES.md
+          token: ${{ secrets.GITHUB_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
