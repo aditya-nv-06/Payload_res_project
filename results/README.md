@@ -72,6 +72,7 @@ results/
 | 🚀 Try it now (5 min) | [Quick Start](#quick-commands) | 5 min |
 | 📚 Understand the project | [Project Summary](project-info/PROJECT_SUMMARY.md) | 10 min |
 | 🔧 Install locally | [Installation Paths](guides/INSTALLATION_PATHS.md) | 20 min |
+| 🤖 Automate releases | [Automation Guide](guides/AUTOMATION.md) | 10 min |
 | 🏭 Deploy to production | [Production Setup](guides/PRODUCTION_SETUP.md) | 2 hours |
 | 🧪 Validate everything works | [Test Report](tests/TEST_REPORT.md) | 15 min |
 | 🆘 Something's broken | [Troubleshooting](builds/TROUBLESHOOTING.md) | 10 min |
@@ -167,6 +168,13 @@ See: [Forensics Guide](guides/FORENSICS.md)
 
 ### Troubleshooting Issues
 See: [Troubleshooting Guide](builds/TROUBLESHOOTING.md)
+
+### Creating Releases & Packages
+1. Read: [Automation Guide](guides/AUTOMATION.md) (10 min)
+2. Create tag: `git tag -a v1.1.0 -m "Release"`
+3. Push: `git push origin v1.1.0`
+4. GitHub Actions automatically builds DEB, RPM, and source packages
+5. Download from GitHub Releases tab
 
 ---
 

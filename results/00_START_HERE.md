@@ -81,8 +81,9 @@ cat alerts.json | jq '.[] | {query, risk_level}'
 **"What are the requirements and limitations?"**
 1. [TECHNICAL_SPECS.md](project-info/TECHNICAL_SPECS.md) — Performance/resources
 2. [BUILD_REPORT.md](builds/BUILD_REPORT.md) — Build options
-3. [PRE_DEPLOYMENT.md](checklists/PRE_DEPLOYMENT.md) — Production readiness
-→ **Next:** Deploy using Path D/E
+3. [AUTOMATION.md](guides/AUTOMATION.md) — CI/CD release workflows
+4. [PRE_DEPLOYMENT.md](checklists/PRE_DEPLOYMENT.md) — Production readiness
+→ **Next:** Deploy using Path D/E or set up automated releases
 
 ### 🏗️ Developer
 **"How does it work internally?"**

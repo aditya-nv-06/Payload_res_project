@@ -1,9 +1,10 @@
 # Results Manifest & Index
 
 **Generated:** May 9, 2026  
-**Total Size:** 120KB  
-**Total Files:** 10 markdown files  
-**Total Content:** 3,124 lines
+**Last Updated:** May 9, 2026 (Automation Guide Added)  
+**Total Size:** 140KB  
+**Total Files:** 12 markdown files  
+**Total Content:** 3,500+ lines
 
 ---
 
@@ -30,6 +31,7 @@ results/
 ├── guides/                          (step-by-step walkthroughs)
 │   ├── FIRST_RUN.md                  (30-minute quickstart)
 │   ├── INSTALLATION_PATHS.md         (5 installation options)
+│   ├── AUTOMATION.md                 (CI/CD release workflows)
 │   ├── [PRODUCTION_SETUP.md]         (deployment guide)
 │   ├── [CONFIGURATION.md]            (tuning guide)
 │   └── [TROUBLESHOOTING.md]          (common issues)
@@ -77,6 +79,7 @@ results/
 |------|------|---------|------|
 | [guides/FIRST_RUN.md](./guides/FIRST_RUN.md) | 8KB | 30-minute quickstart | 30 min |
 | [guides/INSTALLATION_PATHS.md](./guides/INSTALLATION_PATHS.md) | 18KB | 5 installation options | 5-30 min |
+| [guides/AUTOMATION.md](./guides/AUTOMATION.md) | 12KB | Automated release workflows | 10 min |
 
 ### Build & Tests (Validate)
 | File | Size | Purpose |
@@ -102,10 +105,11 @@ results/
 
 ### Coverage
 - ✅ **Project Understanding:** 3 files (46KB)
-- ✅ **Installation & Setup:** 2 files (26KB)  
+- ✅ **Installation & Setup:** 3 files (38KB)  
 - ✅ **Build & Testing:** 2 files (30KB)
 - ✅ **Deployment:** 1 file (9KB)
 - ✅ **Navigation:** 2 files (13KB)
+- ✅ **Automation:** 1 file (12KB)
 
 ### Quality Assurance
 - ✅ **Build Status:** 0 errors, 0 warnings
@@ -129,6 +133,13 @@ results/
 3. Verify: Run verification commands
 4. [Optional] Review: [builds/BUILD_REPORT.md](./builds/BUILD_REPORT.md)
 
+### For Creating Releases (Automated)
+1. Read: **guides/AUTOMATION.md** (10 min)
+2. Create tag: `git tag -a v1.1.0 -m "Release"`
+3. Push: `git push origin v1.1.0`
+4. Wait: GitHub Actions builds automatically (8-10 min)
+5. Download: Packages available in GitHub Releases
+
 ### For Production Deployment (2-4 hours)
 1. Understand: **project-info/TECHNICAL_SPECS.md**
 2. Prepare: **project-info/PROJECT_SUMMARY.md**
@@ -142,6 +153,7 @@ results/
 - **"What can it do?"** → FEATURES.md
 - **"Is it tested?"** → TEST_REPORT.md
 - **"How do I get started?"** → FIRST_RUN.md
+- **"How do I create releases?"** → guides/AUTOMATION.md
 - **"Troubleshooting?"** → builds/TROUBLESHOOTING.md
 
 ---
