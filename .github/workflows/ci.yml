@@ -62,7 +62,14 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libpcap-dev libpq-dev python3
+          sudo apt-get install -y build-essential libpcap-dev libpq-dev libncurses-dev postgresql-client python3
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            pg_isready -h 127.0.0.1 -U postgres && break
+            sleep 1
+          done
 
       - name: Build with libpq
         run: make -B

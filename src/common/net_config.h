@@ -19,10 +19,10 @@
 typedef struct {
     int    ports[NET_CONFIG_MAX_PORTS];
     int    port_count;
-    
+
     char  *ips[NET_CONFIG_MAX_IPS];      /* dynamically allocated */
     int    ip_count;
-    
+
     char  *output_path;                 /* dynamically allocated */
 } net_config_t;
 

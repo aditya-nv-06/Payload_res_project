@@ -21,11 +21,11 @@ typedef struct {
     uint64_t total_alerts;
     uint64_t rule_alerts;
     uint64_t anomaly_alerts;
-    
+
     int      capture_active;
     int      rules_loaded;
     int      ngram_loaded;
-    
+
     time_t   start_time;
 } tui_stats_t;
 
@@ -37,7 +37,7 @@ typedef struct {
     uint16_t src_port;
     char  dst_ip[16];
     uint16_t dst_port;
-    
+
     char  extracted_sql[256];  /* First 255 chars of SQL */
     int   rule_score;
     double anomaly_score;
@@ -49,17 +49,17 @@ typedef struct {
     /* ncurses state */
     int initialized;
     int running;
-    
+
     /* Screen dimensions */
     int max_rows;
     int max_cols;
-    
+
     /* Alert history (circular buffer) */
 #define TUI_MAX_ALERTS 256
     tui_alert_t alerts[TUI_MAX_ALERTS];
     int alert_count;
     int alert_scroll;
-    
+
     /* Current screen */
 #define TUI_SCREEN_DASHBOARD 0
 #define TUI_SCREEN_ALERTS    1
@@ -67,7 +67,7 @@ typedef struct {
 #define TUI_SCREEN_HELP      3
 #define TUI_SCREEN_AUDIT     4
     int current_screen;
-    
+
     /* Statistics */
     tui_stats_t stats;
 

@@ -48,6 +48,7 @@ All scripts are executable and properly formatted.
 ### 3. Makefile Features ✅
 
 **FHS Compliance:**
+
 ```
 ✅ PREFIX: ~/.local (configurable)
 ✅ BINDIR: ~/.local/bin
@@ -58,6 +59,7 @@ All scripts are executable and properly formatted.
 ```
 
 **Build Targets:**
+
 ```
 ✅ make              - Build binary
 ✅ make WITH_TUI=1   - TUI dashboard
@@ -74,6 +76,7 @@ All scripts are executable and properly formatted.
 ### 4. Systemd Service Configuration ✅
 
 **Security Features:**
+
 ```
 ✅ Capabilities: CAP_NET_RAW, CAP_NET_ADMIN
 ✅ ProtectSystem: strict
@@ -85,6 +88,7 @@ All scripts are executable and properly formatted.
 ```
 
 **Reliability:**
+
 ```
 ✅ Restart: on-abnormal
 ✅ RestartSec: 10s
@@ -114,27 +118,32 @@ All scripts are executable and properly formatted.
 
 ## Installation Methods Validated
 
-### Method 1: Interactive Installation ✅
+### Method 1 Interactive Installation ✅
+
 ```bash
 ./install.sh
 # Menu system works, options are clear
 ```
 
-### Method 2: Local User Install ✅
+### Method 2 Local User Install ✅
+
 ```bash
 make clean && make WITH_TUI=1
 make install
 # Installs to ~/.local (no sudo required)
 ```
 
-### Method 3: System-Wide Install ✅
+### Method 3 System-Wide Install ✅
+
 ```bash
 make install PREFIX=/usr/local
 # Proper directory structure created
 ```
 
-### Method 4 & 5: DEB/RPM Packages ⚠️ 
+### Method 4 & 5 DEB/RPM Packages ⚠️
+
 **Status:** Infrastructure ready, requires fpm
+
 ```bash
 # DEB: bash packaging/build-deb.sh
 # RPM: bash packaging/build-rpm.sh
@@ -186,19 +195,22 @@ make install PREFIX=/usr/local
 
 ## Recommendations for Users
 
-### To Build Locally:
+### To Build Locally
+
 ```bash
 make WITH_TUI=1          # Build with dashboard
 make install             # Install to ~/.local
 pqCheck --help          # Verify installation
 ```
 
-### To Create Packages:
+### To Create Packages
+
 1. Install fpm: `gem install fpm` (requires Ruby)
 2. Run builder: `bash packaging/build-deb.sh` or `bash packaging/build-rpm.sh`
 3. Install package: `sudo dpkg -i pqcheck_1.0.0_amd64.deb`
 
-### To Deploy as Service:
+### To Deploy as Service
+
 ```bash
 sudo make install PREFIX=/usr/local  # System install
 sudo systemctl enable pqcheck        # Enable daemon

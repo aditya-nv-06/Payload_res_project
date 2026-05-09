@@ -109,12 +109,19 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist/artifacts
+          path: dist/download
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p dist/artifacts
+          cp dist/download/prerelease-source-archive/*.tar.gz dist/artifacts/ || true
+          cp dist/download/prerelease-pqcheck-deb/*.deb dist/artifacts/ || true
+          cp dist/download/prerelease-pqcheck-rpm/*.rpm dist/artifacts/ || true
 
       - name: Prepare release notes
         run: |
           mkdir -p dist
-          cp dist/artifacts/prerelease-changelog/CHANGELOG.md dist/RELEASE_NOTES.md
+          cp dist/download/prerelease-changelog/CHANGELOG.md dist/RELEASE_NOTES.md
 
       - name: Publish draft pre-release
         uses: softprops/action-gh-release@v2
@@ -125,8 +132,8 @@ jobs:
           prerelease: true
           body_path: dist/RELEASE_NOTES.md
           files: |
-            dist/artifacts/prerelease-source-archive/pqCheck-source.tar.gz
-            dist/artifacts/prerelease-pqcheck-deb/pqcheck_1.0.0_amd64.deb
-            dist/artifacts/prerelease-pqcheck-rpm/pqcheck-1.0.0-1.x86_64.rpm
+            dist/artifacts/pqCheck-source.tar.gz
+            dist/artifacts/pqcheck_1.0.0_amd64.deb
+            dist/artifacts/pqcheck-1.0.0-1.x86_64.rpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

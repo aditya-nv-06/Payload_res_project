@@ -70,7 +70,7 @@ void ngram_train(ngram_model_t *m, const char *text)
     char gram[8];
     gram[m->n] = '\0';
 
-    for (size_t i = 0; i + m->n <= len; i++) {
+    for (size_t i = 0; i + (size_t)m->n <= len; i++) {
         memcpy(gram, text + i, (size_t)m->n);
         ngram_increment(m, gram);
     }

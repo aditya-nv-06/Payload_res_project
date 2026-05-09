@@ -23,8 +23,8 @@ CFLAGS  := -std=c11 -Wall -Wextra -Wpedantic -O2 -g \
            -Isrc
 LDFLAGS := -lpcap -lm
 
-# Build with libpq by default. Override with `make WITH_LIBPQ=0` if you don't
-# want PostgreSQL client linkage in the default build.
+# Build with libpq by default. Set `WITH_LIBPQ=0` to disable PostgreSQL client
+# linkage in the build.
 WITH_LIBPQ ?= 1
 
 # Installation paths (FHS compliant)
@@ -82,7 +82,7 @@ TEST_VALID_SRCS := tests/db_validation_test.c \
 # Optional libpq support                                                      #
 # --------------------------------------------------------------------------- #
 
-ifdef WITH_LIBPQ
+ifeq ($(WITH_LIBPQ),1)
   CFLAGS  += -DWITH_LIBPQ $(shell pg_config --cppflags 2>/dev/null)
   LDFLAGS += $(shell pg_config --ldflags 2>/dev/null) -lpq
 endif
@@ -91,7 +91,7 @@ endif
 # Optional ncurses TUI support                                                #
 # --------------------------------------------------------------------------- #
 
-ifdef WITH_TUI
+ifeq ($(WITH_TUI),1)
   CFLAGS  += -DWITH_TUI
   LDFLAGS += -lncurses
   SRCS    += src/ui/tui.c

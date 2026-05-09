@@ -17,7 +17,7 @@ typedef struct {
 
 /**
  * Generate a PCAP file with synthetic PostgreSQL traffic.
- * 
+ *
  * @param filename Output PCAP file path
  * @param opts Generation options (num_clean, num_injection, seed)
  * @return 0 on success, -1 on error
