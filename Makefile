@@ -83,8 +83,8 @@ TEST_VALID_SRCS := tests/db_validation_test.c \
 # --------------------------------------------------------------------------- #
 
 ifeq ($(WITH_LIBPQ),1)
-  CFLAGS  += -DWITH_LIBPQ $(shell pg_config --cppflags 2>/dev/null)
-  LDFLAGS += $(shell pg_config --ldflags 2>/dev/null) -lpq
+  CFLAGS  += -DWITH_LIBPQ -I$(shell pg_config --includedir 2>/dev/null)
+  LDFLAGS += -L$(shell pg_config --libdir 2>/dev/null) -lpq
 endif
 
 # --------------------------------------------------------------------------- #

@@ -2,22 +2,46 @@
 
 A passive network intrusion-detection sensor for PostgreSQL (TCP/5432) written in C for Linux. It reassembles fragmented TCP streams, parses the PostgreSQL wire protocol, and detects SQL injection using both rule-based matching and n-gram anomaly scoring. Optionally, it correlates network-level detections with live PostgreSQL telemetry via `pg_stat_activity`.
 
-## Architecture
+---
 
-`pqCheck` has two entry modes that share the same detection core:
+## 📖 **[→ Full Documentation Index](DOCUMENTATION.md)** ← Start Here for Structured Learning
 
-- passive packet inspection from live capture or offline PCAP, and
-- direct PostgreSQL session mode for executing and scoring SQL statements.
+Choose your path by role and goal. All learning paths are ordered and structured for easy follow-up.
 
-Optional interactive TUI (Text User Interface) mode for real-time monitoring with a dashboard, alert log viewer, and configuration display.
+---
 
-**🚀 Getting Started?** Start with [docs/QUICK-REF.md](docs/QUICK-REF.md) for 30-second start + command cheat sheet, then read [docs/quickstart.md](docs/quickstart.md) for the full walkthrough.
+## 🚀 Quick Navigation Guide
 
-See [docs/architecture.md](docs/architecture.md) for the full Mermaid diagram and module map.
-For platform-specific run instructions, see [docs/run.md](docs/run.md).
-For the n-gram corpus model guide, see [docs/ngram.md](docs/ngram.md).
-For TUI usage, see [docs/tui.md](docs/tui.md).
-For PCAP file management, see [docs/pcap-guide.md](docs/pcap-guide.md).
+### For Complete Beginners
+1. **First read**: [docs/QUICK-REF.md](docs/QUICK-REF.md) — 30-second demo + command cheat sheet (5 min read)
+2. **Hands-on**: [docs/quickstart.md](docs/quickstart.md) — Complete workflow with examples (15 min read)
+3. **Understand the model**: [docs/ngram.md](docs/ngram.md) — How anomaly detection works (10 min read)
+
+### For Setup & Installation
+1. **Build from source**: [BUILD.md](BUILD.md) — Prerequisites, build options, packaging (15 min read)
+2. **Platform-specific runtime**: [docs/run.md](docs/run.md) — Linux, macOS, Windows integration (10 min read)
+3. **Interactive dashboard**: [docs/tui.md](docs/tui.md) — Real-time monitoring interface (10 min read)
+
+### For Production Deployment
+1. **Configuration**: [docs/network-config.md](docs/network-config.md) — Custom ports, IPs, outputs (10 min read)
+2. **Rules management**: [docs/rules.md](docs/rules.md) — Writing and tuning detection rules (15 min read)
+3. **PCAP operations**: [docs/pcap-guide.md](docs/pcap-guide.md) — Capture, storage, forensics (15 min read)
+
+### For Developers & Architects
+1. **System design**: [docs/architecture.md](docs/architecture.md) — Module map, data flow, Mermaid diagram (20 min read)
+2. **CLI reference**: [docs/cli.md](docs/cli.md) — Full arguments and modes (10 min read)
+3. **Example configurations**: [docs/Example.md](docs/Example.md) — Real-world scenarios (20 min read)
+
+---
+
+## Entry Modes
+
+`pqCheck` has two entry paths that share the same detection core:
+
+- **Passive packet inspection** from live capture or offline PCAP files
+- **Direct PostgreSQL session mode** for executing and scoring SQL statements
+
+Optional interactive **TUI (Text User Interface)** mode for real-time monitoring with dashboard, alerts, and config display.
 
 ## Components
 
