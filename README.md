@@ -12,25 +12,14 @@ Choose your path by role and goal. All learning paths are ordered and structured
 
 ## 🚀 Quick Navigation Guide
 
-### For Complete Beginners
-1. **First read**: [docs/QUICK-REF.md](docs/QUICK-REF.md) — 30-second demo + command cheat sheet (5 min read)
-2. **Hands-on**: [docs/quickstart.md](docs/quickstart.md) — Complete workflow with examples (15 min read)
-3. **Understand the model**: [docs/ngram.md](docs/ngram.md) — How anomaly detection works (10 min read)
+Use this table for the fastest entry point, then follow [DOCUMENTATION.md](DOCUMENTATION.md) for full paths.
 
-### For Setup & Installation
-1. **Build from source**: [BUILD.md](BUILD.md) — Prerequisites, build options, packaging (15 min read)
-2. **Platform-specific runtime**: [docs/run.md](docs/run.md) — Linux, macOS, Windows integration (10 min read)
-3. **Interactive dashboard**: [docs/tui.md](docs/tui.md) — Real-time monitoring interface (10 min read)
-
-### For Production Deployment
-1. **Configuration**: [docs/network-config.md](docs/network-config.md) — Custom ports, IPs, outputs (10 min read)
-2. **Rules management**: [docs/rules.md](docs/rules.md) — Writing and tuning detection rules (15 min read)
-3. **PCAP operations**: [docs/pcap-guide.md](docs/pcap-guide.md) — Capture, storage, forensics (15 min read)
-
-### For Developers & Architects
-1. **System design**: [docs/architecture.md](docs/architecture.md) — Module map, data flow, Mermaid diagram (20 min read)
-2. **CLI reference**: [docs/cli.md](docs/cli.md) — Full arguments and modes (10 min read)
-3. **Example configurations**: [docs/Example.md](docs/Example.md) — Real-world scenarios (20 min read)
+| Goal | Start here | Next |
+|---|---|---|
+| First quick run | [docs/QUICK-REF.md](docs/QUICK-REF.md) | [docs/quickstart.md](docs/quickstart.md) |
+| Install and run | [BUILD.md](BUILD.md) | [docs/run.md](docs/run.md) |
+| Production setup | [docs/network-config.md](docs/network-config.md) | [docs/rules.md](docs/rules.md), [docs/ngram.md](docs/ngram.md) |
+| Understand internals | [docs/architecture.md](docs/architecture.md) | [docs/cli.md](docs/cli.md), [docs/Example.md](docs/Example.md) |
 
 ---
 
