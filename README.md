@@ -205,6 +205,9 @@ sudo pqCheck --capture --capture-out results/live_capture.pcap --duration 30
 
 # Live capture on an interface (usually requires sudo or CAP_NET_RAW)
 sudo pqCheck -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl -v
+
+# First-time live capture (no model): auto-collect baseline, train, then monitor
+sudo pqCheck -i eth0 --auto-baseline-duration 30 -R config/rules.conf -o alerts.jsonl -v
 ```
 
 ### Auto-train from PCAP (quick)

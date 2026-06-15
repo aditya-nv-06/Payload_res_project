@@ -19,6 +19,8 @@ typedef struct {
     const char *audit_json_out;
     int         capture_mode;
     int         capture_seconds;
+    int         auto_baseline_enabled;
+    int         auto_baseline_seconds;
     int         audit_mode;
     int         audit_include_docs;
     int         audit_pg_only; /* Explicit system-level Postgres audit */

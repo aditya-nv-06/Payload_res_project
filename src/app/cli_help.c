@@ -42,6 +42,9 @@ void cli_print_usage(const char *prog)
         "  --pcap <file>  Alias for -r <file> (explicit offline pcap input)\n"
         "  --capture-out <file>  Write live capture to this pcap path\n"
         "  --duration N   Capture duration in seconds when using --capture\n"
+        "  --auto-baseline          Auto-capture baseline when live mode has no model (default: on)\n"
+        "  --no-auto-baseline       Disable automatic baseline capture in live mode\n"
+        "  --auto-baseline-duration N  Baseline capture seconds in live mode (default: 30)\n"
         "  --audit        Run native security audit mode and exit (file-system scan)\n"
         "  --audit-pg     Run system-level PostgreSQL audit using libpq (server checks)\n"
         "  --audit-root <path>   Root directory to scan (default: .)\n"
@@ -106,6 +109,9 @@ void cli_print_usage(const char *prog)
         "  # Live capture on eth0 with verbose output\n"
         "  %s -i eth0 -R config/rules.conf -v\n"
         "\n"
+        "  # First-time live run: auto-capture baseline for 45s, then monitor\n"
+        "  %s -i eth0 --auto-baseline-duration 45 -R config/rules.conf -o alerts.jsonl -v\n"
+        "\n"
         "  # Analyze offline PCAP file\n"
         "  %s -r capture.pcap -R config/rules.conf -o alerts.jsonl\n"
         "\n"
@@ -124,5 +130,5 @@ void cli_print_usage(const char *prog)
         "  # Execute a single SQL statement in database session mode\n"
         "  %s -d \"host=localhost dbname=postgres user=postgres sslmode=require\" -e \"SELECT 1\"\n"
         "\n",
-        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
+        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
 }

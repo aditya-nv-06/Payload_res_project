@@ -23,6 +23,10 @@
  *   -t <file>         Train n-gram model from file (one SQL per line) and save
  *                     to -m path, then exit
  *   -T <threshold>    Anomaly score threshold (default: -5.0; lower = stricter)
+ *   --auto-baseline   In live mode without -m, capture baseline traffic and train
+ *                     an in-memory model before monitoring (default: enabled)
+ *   --auto-baseline-duration N  Baseline capture duration in seconds (default: 30)
+ *   --no-auto-baseline Disable live auto-baseline behavior
  *   -c <connstr>      libpq connection string for pg_stat_activity correlation
  *   -d <connstr>      Direct PostgreSQL session mode; execute and score SQL
  *   -e <sql>          Execute one SQL statement in -d mode, then exit
@@ -32,6 +36,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <pcap.h>
 #include <time.h>
 
@@ -265,6 +270,9 @@ int main(int argc, char *argv[])
 
     char capture_path_buf[256];
     memset(capture_path_buf, 0, sizeof(capture_path_buf));
+    char auto_baseline_path_buf[256];
+    memset(auto_baseline_path_buf, 0, sizeof(auto_baseline_path_buf));
+    int auto_baseline_temp_file = 0;
 
     if (cli.capture_mode) {
         if (pcap_file) {
@@ -291,6 +299,39 @@ int main(int argc, char *argv[])
 
         cli.auto_pcap = pcap_file;
         cli.pcap_file = pcap_file;
+    }
+
+    /* ---- First-time live mode: auto-capture baseline and auto-train ---- */
+    if (!pcap_file &&
+        !model_path &&
+        !corpus_path &&
+        !cli.auto_pcap &&
+        !cli.capture_mode &&
+        !db_connstr &&
+        !cli.audit_mode &&
+        !cli.gen_test_output &&
+        cli.auto_baseline_enabled) {
+        if (cli.auto_baseline_seconds <= 0) {
+            fprintf(stderr, "[ERROR] --auto-baseline-duration must be greater than zero\n");
+            return 1;
+        }
+
+        snprintf(auto_baseline_path_buf, sizeof(auto_baseline_path_buf),
+                 "/tmp/pqcheck_autobaseline_%ld_%ld.pcap",
+                 (long)time(NULL), (long)getpid());
+        fprintf(stderr,
+                "[main] no model provided in live mode; collecting baseline traffic for %d second(s)\n",
+                cli.auto_baseline_seconds);
+        fprintf(stderr,
+                "[main] baseline assumes initial capture is clean; disable with --no-auto-baseline\n");
+
+        if (capture_live_to_pcap(iface, bpf_extra, auto_baseline_path_buf,
+                                 cli.auto_baseline_seconds) == 0) {
+            cli.auto_pcap = auto_baseline_path_buf;
+            auto_baseline_temp_file = 1;
+        } else {
+            fprintf(stderr, "[main] warning: baseline capture failed; continuing without anomaly model\n");
+        }
     }
 
     /* ---- Validate arguments ---- */
@@ -447,6 +488,12 @@ int main(int argc, char *argv[])
                         (unsigned long long)g_app.ngram.total,
                         (unsigned long long)g_app.ngram.vocab_size);
             }
+        }
+
+        if (auto_baseline_temp_file) {
+            if (remove(auto_baseline_path_buf) != 0)
+                fprintf(stderr, "[main] warning: failed to remove temp baseline pcap: %s\n",
+                        auto_baseline_path_buf);
         }
     }
 

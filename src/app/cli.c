@@ -26,6 +26,8 @@ void cli_options_init(cli_options_t *opts)
     opts->audit_json_out = NULL;
     opts->capture_mode = 0;
     opts->capture_seconds = 30;
+    opts->auto_baseline_enabled = 1;
+    opts->auto_baseline_seconds = 30;
     opts->audit_mode = 0;
     opts->audit_include_docs = 0;
     opts->audit_pg_only = 0;
@@ -50,6 +52,9 @@ int cli_parse(int argc, char **argv, cli_options_t *opts, const char *prog)
         {"pcap",    required_argument,  NULL,  'r' },
         {"capture-out", required_argument, NULL,  7 },
         {"duration", required_argument, NULL,  8 },
+        {"auto-baseline", no_argument, NULL, 14 },
+        {"no-auto-baseline", no_argument, NULL, 15 },
+        {"auto-baseline-duration", required_argument, NULL, 16 },
         {"audit", no_argument, NULL, 9 },
         {"audit-root", required_argument, NULL, 10 },
         {"audit-json", required_argument, NULL, 11 },
@@ -81,6 +86,9 @@ int cli_parse(int argc, char **argv, cli_options_t *opts, const char *prog)
         case 6:   opts->capture_mode = 1; break; /* --capture */
         case 7:   opts->capture_pcap = optarg; break; /* --capture-out */
         case 8:   opts->capture_seconds = atoi(optarg); break; /* --duration */
+        case 14:  opts->auto_baseline_enabled = 1; break; /* --auto-baseline */
+        case 15:  opts->auto_baseline_enabled = 0; break; /* --no-auto-baseline */
+        case 16:  opts->auto_baseline_seconds = atoi(optarg); break; /* --auto-baseline-duration */
         case 9:   opts->audit_mode = 1; break; /* --audit */
         case 10:  opts->audit_root = optarg; opts->audit_mode = 1; break; /* --audit-root */
         case 11:  opts->audit_json_out = optarg; opts->audit_mode = 1; break; /* --audit-json */
