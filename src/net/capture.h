@@ -1,9 +1,3 @@
-/*
- * capture.h – libpcap wrapper (Milestone 1)
- *
- * Opens a live interface or an offline .pcap file, installs a BPF filter for
- * "tcp port 5432", and delivers raw packets to a callback.
- */
 #ifndef CAPTURE_H
 #define CAPTURE_H
 

@@ -10,6 +10,7 @@
  *
  * Reference: https://arxiv.org/abs/1412.3664
  */
+ 
 #ifndef NGRAM_H
 #define NGRAM_H
 

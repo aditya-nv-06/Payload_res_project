@@ -18,6 +18,7 @@ Welcome to the `pqCheck` documentation set.
 - [quickstart.md](quickstart.md) — step-by-step first run
 - [cli.md](cli.md) — full command reference
 - [run.md](run.md) — platform-specific runtime guidance
+- [auto-baseline.md](auto-baseline.md) — first-time live monitoring workflow
 - [Example.md](Example.md) — practical usage scenarios
 - [network-config.md](network-config.md) — monitor custom ports and destination IPs
 - [rules.md](rules.md) — rule syntax and tuning
@@ -31,5 +32,6 @@ Welcome to the `pqCheck` documentation set.
 1. [QUICK-REF.md](QUICK-REF.md)
 2. [quickstart.md](quickstart.md)
 3. [cli.md](cli.md)
+4. [auto-baseline.md](auto-baseline.md)
 
 If you are unsure where to begin, start with **QUICK-REF.md**.

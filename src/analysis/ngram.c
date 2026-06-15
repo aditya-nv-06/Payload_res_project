@@ -1,6 +1,3 @@
-/*
- * ngram.c – N-gram anomaly detection (Milestone 5)
- */
 #include "analysis/ngram.h"
 #include "common/util.h"
 

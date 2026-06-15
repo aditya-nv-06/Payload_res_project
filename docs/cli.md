@@ -65,6 +65,8 @@ If you run live mode without `-m`, pqCheck now auto-captures a short baseline PC
 sudo pqCheck -i eth0 --auto-baseline-duration 45 -R config/rules.conf -o alerts.jsonl -v
 ```
 
+For a detailed operator-oriented explanation of this workflow, including temporary files, trust assumptions, and tuning advice, see [auto-baseline.md](auto-baseline.md).
+
 ### Custom BPF filter
 
 ```bash

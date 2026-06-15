@@ -91,6 +91,8 @@ pqCheck -r capture.pcap -R config/rules.conf -m baseline.model -o alerts.jsonl -
 sudo pqCheck -i eth0 -R config/rules.conf -m baseline.model -o alerts.jsonl -v
 ```
 
+If you do not have a model yet, pqCheck can automatically capture a short baseline and train in memory before entering live monitoring. See [auto-baseline.md](auto-baseline.md) for the full workflow.
+
 ### Use the interactive dashboard (TUI)
 
 ```bash
@@ -114,6 +116,7 @@ pqCheck --tui -r suspect.pcap -R config/rules.conf -m baseline.model
 
 - [README (docs index)](README.md)
 - [CLI reference](cli.md)
+- [Automatic baseline capture](auto-baseline.md)
 - [Quick reference](QUICK-REF.md)
 - [Network config](network-config.md)
 - [Rules guide](rules.md)

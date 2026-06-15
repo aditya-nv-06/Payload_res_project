@@ -1,20 +1,3 @@
-/*
- * detector.h – Rule-based SQLi detection engine (Milestone 4)
- *
- * Supports two rule types:
- *   RULE_KEYWORD – case-insensitive substring search
- *   RULE_REGEX   – POSIX extended regular expression (case-insensitive)
- *
- * Rules are loaded from a plain-text config file (config/rules.conf).
- * Each non-comment line has the format:
- *
- *   name|type|pattern|severity
- *
- *   name     – short identifier (no spaces)
- *   type     – KEYWORD or REGEX
- *   pattern  – the substring or ERE pattern
- *   severity – LOW / MEDIUM / HIGH / CRITICAL
- */
 #ifndef DETECTOR_H
 #define DETECTOR_H
 
