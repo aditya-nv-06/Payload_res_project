@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <pcap.h>
 #include <time.h>
 
@@ -312,18 +313,26 @@ int main(int argc, char *argv[])
         !cli.gen_test_output &&
         cli.auto_baseline_enabled) {
         if (cli.auto_baseline_seconds <= 0) {
-            fprintf(stderr, "[ERROR] --auto-baseline-duration must be greater than zero\n");
+            fprintf(stderr, "[ERROR] --auto-baseline-duration must be greater than zero (got %d)\n",
+                    cli.auto_baseline_seconds);
             return 1;
         }
 
         snprintf(auto_baseline_path_buf, sizeof(auto_baseline_path_buf),
-                 "/tmp/pqcheck_autobaseline_%ld_%ld.pcap",
-                 (long)time(NULL), (long)getpid());
+                 "/tmp/pqcheck_autobaseline_XXXXXX.pcap");
+        int baseline_fd = mkstemps(auto_baseline_path_buf, 5);
+        if (baseline_fd < 0) {
+            fprintf(stderr,
+                    "[main] warning: failed to create temp baseline pcap file (%s); continuing without anomaly model\n",
+                    strerror(errno));
+            goto skip_auto_baseline_capture;
+        }
+        close(baseline_fd);
         fprintf(stderr,
                 "[main] no model provided in live mode; collecting baseline traffic for %d second(s)\n",
                 cli.auto_baseline_seconds);
         fprintf(stderr,
-                "[main] baseline assumes initial capture is clean; disable with --no-auto-baseline\n");
+                "[main] baseline assumes initial capture contains only legitimate traffic; disable with --no-auto-baseline\n");
 
         if (capture_live_to_pcap(iface, bpf_extra, auto_baseline_path_buf,
                                  cli.auto_baseline_seconds) == 0) {
@@ -332,6 +341,8 @@ int main(int argc, char *argv[])
         } else {
             fprintf(stderr, "[main] warning: baseline capture failed; continuing without anomaly model\n");
         }
+skip_auto_baseline_capture:
+        ;
     }
 
     /* ---- Validate arguments ---- */
@@ -492,8 +503,10 @@ int main(int argc, char *argv[])
 
         if (auto_baseline_temp_file) {
             if (remove(auto_baseline_path_buf) != 0)
-                fprintf(stderr, "[main] warning: failed to remove temp baseline pcap: %s\n",
-                        auto_baseline_path_buf);
+                fprintf(stderr,
+                        "[main] warning: failed to remove temp baseline pcap: %s (%s)\n",
+                        auto_baseline_path_buf,
+                        strerror(errno));
         }
     }
 
