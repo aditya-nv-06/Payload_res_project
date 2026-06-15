@@ -59,6 +59,12 @@ sudo pqCheck \
   -v
 ```
 
+If you run live mode without `-m`, pqCheck now auto-captures a short baseline PCAP, trains an in-memory model, then continues live monitoring:
+
+```bash
+sudo pqCheck -i eth0 --auto-baseline-duration 45 -R config/rules.conf -o alerts.jsonl -v
+```
+
 ### Custom BPF filter
 
 ```bash
@@ -216,6 +222,9 @@ pqCheck \
 | `-e <sql>` | Execute one SQL statement in `-d` mode, then disconnect. |
 | `-v` | Verbose logging to stderr. |
 | `--tui` | Enable interactive TUI mode (requires ncurses). |
+| `--auto-baseline` | Force-enable automatic baseline capture in live mode without `-m` (enabled by default). |
+| `--no-auto-baseline` | Disable automatic baseline capture in live mode when no model is provided. |
+| `--auto-baseline-duration <sec>` | Baseline capture duration in seconds. Default: `30`. |
 | `-h`, `--help` | Show help. |
 | `--version` | Print the CLI version. |
 
